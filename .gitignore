@@ -1,0 +1,3 @@
+*.json
+*.pdf
+embedder_model_cache
