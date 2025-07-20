@@ -1,0 +1,29 @@
+name: Greetings
+
+on: [pull_request_target, issues]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >
+            👋 Hi there! Thank you for submitting your first issue to this project.
+            This repository is part of a document translation platform enhanced with AI features 
+            like "Chat with PDF", summarization, and question generation. Please make sure to 
+            provide enough context and include logs or error messages if relevant.
+            For more information, refer to the project documentation in the README.
+
+          pr-message: >
+            🎉 Thanks for your first pull request! We're building an AI-enhanced Translation 
+            Platform that includes intelligent PDF chat, summarization, and Q&A generation.
+            Your contribution is valuable. Please ensure that:
+            - Your code is modular and well-documented.
+            - You’ve tested locally using the provided FAISS and LangChain pipeline.
+            - You followed our style and directory structure.
+            Once reviewed, we'll get back to you soon!

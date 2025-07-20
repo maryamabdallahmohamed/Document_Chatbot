@@ -1,3 +1,4 @@
 *.json
 *.pdf
 embedder_model_cache
+.DS_Store
