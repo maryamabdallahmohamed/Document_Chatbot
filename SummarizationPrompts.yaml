@@ -1,0 +1,376 @@
+summary_templates:
+  short:
+    base: |
+      Create a SHORT summary of the following document using this format:
+
+      **Main Topic:** [One concise sentence describing what this document is about]
+
+      **Key Points:**
+      - [Most critical point only]
+      - [Second most critical point only]
+
+      **Conclusion:** [Brief main takeaway]
+
+      Keep the summary concise and focused on only the most essential information.
+
+      Document: {context}
+    
+    with_reasoning: |
+      Create a SHORT summary of the following document using this format:
+
+      **Main Topic:** [One concise sentence describing what this document is about]
+
+      **Key Points:**
+      - [Most critical point only]
+      - [Second most critical point only]
+
+      **Conclusion:** [Brief main takeaway]
+
+      ---
+
+      **Reasoning Process:**
+      **Analysis:** [Brief explanation of main topic identification]
+      **Key Point Selection:** [Why these 2 points are most critical]
+      **Conclusion Logic:** [Brief reasoning for takeaway]
+
+      Keep the summary concise and focused on only the most essential information.
+
+      Document: {context}
+
+  medium:
+    base: |
+      Summarize the following document using this format:
+
+      **Main Topic:** [One sentence describing what this document is about]
+
+      **Key Points:**
+      - [Most important point]
+      - [Second most important point]  
+      - [Third most important point]
+
+      **Details:** [Supporting information, numbers, examples]
+
+      **Conclusion:** [Main takeaway or implication]
+
+      Document: {context}
+    
+    with_reasoning: |
+      Summarize the following document using this format:
+
+      **Main Topic:** [One sentence describing what this document is about]
+
+      **Key Points:**
+      - [Most important point]
+      - [Second most important point]  
+      - [Third most important point]
+
+      **Details:** [Supporting information, numbers, examples]
+
+      **Conclusion:** [Main takeaway or implication]
+
+      ---
+
+      **Reasoning Process:**
+      **Analysis:** [Explain how you identified the main topic and why it's central to the document]
+      **Key Point Selection:** [Explain why you chose these specific points as the most important]
+      **Detail Curation:** [Explain how you selected the supporting details and what makes them relevant]
+      **Conclusion Logic:** [Explain the reasoning behind your main takeaway]
+
+      Document: {context}
+
+  long:
+    base: |
+      Create a COMPREHENSIVE summary of the following document using this format:
+
+      **Main Topic:** [Detailed sentence describing what this document is about and its context]
+
+      **Key Points:**
+      - [Most important point with context]
+      - [Second most important point with context]  
+      - [Third most important point with context]
+      - [Fourth important point with context]
+      - [Fifth important point with context]
+
+      **Details:** [Extensive supporting information, numbers, examples, methodologies, and background context]
+
+      **Implications:** [What this means in broader context]
+
+      **Conclusion:** [Comprehensive main takeaway with implications]
+
+      Provide a thorough and detailed summary that captures nuances and context.
+
+      Document: {context}
+    
+    with_reasoning: |
+      Create a COMPREHENSIVE summary of the following document using this format:
+
+      **Main Topic:** [Detailed sentence describing what this document is about and its context]
+
+      **Key Points:**
+      - [Most important point with context]
+      - [Second most important point with context]  
+      - [Third most important point with context]
+      - [Fourth important point with context]
+      - [Fifth important point with context]
+
+      **Details:** [Extensive supporting information, numbers, examples, methodologies, and background context]
+
+      **Implications:** [What this means in broader context]
+
+      **Conclusion:** [Comprehensive main takeaway with implications]
+
+      ---
+
+      **Reasoning Process:**
+      **Analysis:** [Detailed explanation of how you identified the main topic, its significance, and contextual importance]
+      **Key Point Selection:** [Thorough explanation of why you chose these specific points, their relative importance, and how they relate to each other]
+      **Detail Curation:** [Comprehensive explanation of how you selected supporting details, what makes them relevant, and how they support the key points]
+      **Implication Analysis:** [Reasoning behind the broader implications and their significance]
+      **Conclusion Logic:** [Detailed reasoning behind your comprehensive takeaway and its implications]
+
+      Provide a thorough and detailed summary that captures nuances and context.
+
+      Document: {context}
+
+overview_templates:
+  high_level:
+    short:
+      base: |
+        Create a BRIEF high-level overview of the following document:
+
+        **Document Type:** [What kind of document this is]
+        **Primary Focus:** [The main subject in one sentence]
+        **Key Outcome:** [Most important conclusion]
+
+        Keep it concise and strategic.
+
+        Document: {context}
+      
+      with_reasoning: |
+        Create a BRIEF high-level overview of the following document:
+
+        **Document Type:** [What kind of document this is]
+        **Primary Focus:** [The main subject in one sentence]
+        **Key Outcome:** [Most important conclusion]
+
+        ---
+
+        **Reasoning Process:**
+        **Document Classification:** [Why you categorized it this way]
+        **Focus Identification:** [How you determined the primary focus]
+        **Outcome Selection:** [Why this outcome is most significant]
+
+        Keep it concise and strategic.
+
+        Document: {context}
+
+    medium:
+      base: |
+        Create a HIGH-LEVEL overview of the following document:
+
+        **Document Type:** [What kind of document this is - report, article, research paper, etc.]
+        **Primary Focus:** [The main subject or theme in one sentence]
+        **Key Outcome:** [The most important conclusion or result]
+        **Relevance:** [Why this document matters or who should care about it]
+        **Strategic Impact:** [Broader implications for stakeholders]
+
+        Focus on the big picture and strategic importance rather than specific details.
+
+        Document: {context}
+      
+      with_reasoning: |
+        Create a HIGH-LEVEL overview of the following document:
+
+        **Document Type:** [What kind of document this is - report, article, research paper, etc.]
+        **Primary Focus:** [The main subject or theme in one sentence]
+        **Key Outcome:** [The most important conclusion or result]
+        **Relevance:** [Why this document matters or who should care about it]
+        **Strategic Impact:** [Broader implications for stakeholders]
+
+        ---
+
+        **Reasoning Process:**
+        **Document Analysis:** [How you determined the document type and why this classification is accurate]
+        **Focus Determination:** [Process for identifying the primary theme and why it's central]
+        **Outcome Evaluation:** [Why you selected this particular outcome as most important]
+        **Relevance Assessment:** [How you determined stakeholder importance and relevance]
+        **Impact Analysis:** [Reasoning behind the strategic implications identified]
+
+        Focus on the big picture and strategic importance rather than specific details.
+
+        Document: {context}
+
+    long:
+      base: |
+        Create a COMPREHENSIVE high-level overview of the following document:
+
+        **Document Type:** [Detailed classification of document type and its context]
+        **Primary Focus:** [The main subject or theme with background context]
+        **Key Outcomes:** [Multiple important conclusions and results]
+        **Strategic Relevance:** [Why this document matters and who should care about it]
+        **Strategic Impact:** [Broader implications for different stakeholder groups]
+        **Decision Points:** [Key considerations for leadership/decision-makers]
+        **Future Implications:** [Long-term strategic considerations]
+
+        Provide a comprehensive strategic view that captures the document's importance in broader context.
+
+        Document: {context}
+      
+      with_reasoning: |
+        Create a COMPREHENSIVE high-level overview of the following document:
+
+        **Document Type:** [Detailed classification of document type and its context]
+        **Primary Focus:** [The main subject or theme with background context]
+        **Key Outcomes:** [Multiple important conclusions and results]
+        **Strategic Relevance:** [Why this document matters and who should care about it]
+        **Strategic Impact:** [Broader implications for different stakeholder groups]
+        **Decision Points:** [Key considerations for leadership/decision-makers]
+        **Future Implications:** [Long-term strategic considerations]
+
+        ---
+
+        **Reasoning Process:**
+        **Document Classification Logic:** [Detailed explanation of how you classified the document type and why this classification provides important context]
+        **Focus Analysis:** [Comprehensive reasoning for how you identified the primary theme and why it's the central organizing principle]
+        **Outcome Prioritization:** [Detailed explanation of how you selected and ranked the key outcomes and their relative importance]
+        **Relevance Mapping:** [Analysis of how you determined stakeholder groups and why this document matters to each]
+        **Impact Assessment:** [Reasoning behind strategic implications and how they affect different stakeholder groups]
+        **Decision Framework:** [Logic for identifying key decision points and why they're critical for leadership]
+        **Future Analysis:** [Reasoning behind long-term implications and strategic considerations]
+
+        Provide a comprehensive strategic view that captures the document's importance in broader context.
+
+        Document: {context}
+
+  low_level:
+    short:
+      base: |
+        Create a BRIEF low-level overview of the following document:
+
+        **Key Details:**
+        - [Most critical technical detail]
+        - [Most important data point]
+
+        **Action Items:** [Immediate takeaways]
+
+        Focus on the most essential concrete information.
+
+        Document: {context}
+      
+      with_reasoning: |
+        Create a BRIEF low-level overview of the following document:
+
+        **Key Details:**
+        - [Most critical technical detail]
+        - [Most important data point]
+
+        **Action Items:** [Immediate takeaways]
+
+        ---
+
+        **Reasoning Process:**
+        **Detail Selection:** [Why these details are most critical]
+        **Data Prioritization:** [How you chose the most important data point]
+        **Action Identification:** [Logic behind the immediate takeaways]
+
+        Focus on the most essential concrete information.
+
+        Document: {context}
+
+    medium:
+      base: |
+        Create a LOW-LEVEL overview of the following document:
+
+        **Specific Details:**
+        - [Important technical detail #1]
+        - [Important technical detail #2]
+        - [Important technical detail #3]
+
+        **Data Points:** [Specific numbers, statistics, measurements, or quantitative findings]
+        **Methodology:** [How things were done, specific processes, or technical approaches mentioned]
+        **Supporting Evidence:** [Specific examples, case studies, or proof points]
+        **Technical Context:** [Specialized terminology, technical background, or domain-specific information]
+
+        Focus on concrete, actionable details and specific information rather than broad themes.
+
+        Document: {context}
+      
+      with_reasoning: |
+        Create a LOW-LEVEL overview of the following document:
+
+        **Specific Details:**
+        - [Important technical detail #1]
+        - [Important technical detail #2]
+        - [Important technical detail #3]
+
+        **Data Points:** [Specific numbers, statistics, measurements, or quantitative findings]
+        **Methodology:** [How things were done, specific processes, or technical approaches mentioned]
+        **Supporting Evidence:** [Specific examples, case studies, or proof points]
+        **Technical Context:** [Specialized terminology, technical background, or domain-specific information]
+
+        ---
+
+        **Reasoning Process:**
+        **Detail Curation:** [How you selected these specific technical details and why they're most important]
+        **Data Analysis:** [Process for identifying and prioritizing quantitative findings]
+        **Methodology Assessment:** [Why you highlighted these particular processes and approaches]
+        **Evidence Evaluation:** [How you chose supporting evidence and why it's compelling]
+        **Context Determination:** [Reasoning behind technical context selection and domain expertise required]
+
+        Focus on concrete, actionable details and specific information rather than broad themes.
+
+        Document: {context}
+
+    long:
+      base: |
+        Create a COMPREHENSIVE low-level overview of the following document:
+
+        **Detailed Specifications:**
+        - [Technical detail #1 with context]
+        - [Technical detail #2 with context]
+        - [Technical detail #3 with context]
+        - [Technical detail #4 with context]
+        - [Technical detail #5 with context]
+
+        **Quantitative Data:** [Comprehensive numbers, statistics, measurements, metrics, and quantitative findings]
+        **Methodological Details:** [Detailed processes, technical approaches, implementation steps, and procedures]
+        **Supporting Evidence:** [Extensive examples, case studies, proof points, and validation data]
+        **Technical Context:** [Specialized terminology, technical background, domain-specific information, and prerequisites]
+        **Implementation Details:** [Specific steps, requirements, dependencies, and technical considerations]
+        **Quality Metrics:** [Standards, benchmarks, success criteria, and measurement approaches]
+
+        Provide exhaustive technical detail for implementers and specialists.
+
+        Document: {context}
+      
+      with_reasoning: |
+        Create a COMPREHENSIVE low-level overview of the following document:
+
+        **Detailed Specifications:**
+        - [Technical detail #1 with context]
+        - [Technical detail #2 with context]
+        - [Technical detail #3 with context]
+        - [Technical detail #4 with context]
+        - [Technical detail #5 with context]
+
+        **Quantitative Data:** [Comprehensive numbers, statistics, measurements, metrics, and quantitative findings]
+        **Methodological Details:** [Detailed processes, technical approaches, implementation steps, and procedures]
+        **Supporting Evidence:** [Extensive examples, case studies, proof points, and validation data]
+        **Technical Context:** [Specialized terminology, technical background, domain-specific information, and prerequisites]
+        **Implementation Details:** [Specific steps, requirements, dependencies, and technical considerations]
+        **Quality Metrics:** [Standards, benchmarks, success criteria, and measurement approaches]
+
+        ---
+
+        **Reasoning Process:**
+        **Specification Analysis:** [Detailed explanation of how you identified and prioritized technical specifications and why these are most critical]
+        **Data Methodology:** [Comprehensive reasoning for quantitative data selection and how you determined significance]
+        **Process Evaluation:** [Detailed analysis of methodological choices and why these approaches are highlighted]
+        **Evidence Framework:** [Thorough explanation of evidence selection criteria and validation logic]
+        **Context Architecture:** [Reasoning behind technical context organization and prerequisite identification]
+        **Implementation Logic:** [Analysis of how you determined implementation priorities and dependency relationships]
+        **Quality Assessment:** [Detailed reasoning for quality metrics selection and measurement approach validation]
+
+        Provide exhaustive technical detail for implementers and specialists.
+
+        Document: {context}
