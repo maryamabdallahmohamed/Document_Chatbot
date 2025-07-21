@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Strategy Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-container {
+            display: flex;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        
+        .new-chat-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .new-chat-btn:hover {
+            background: #5855eb;
+            transform: translateY(-1px);
+        }
+        
+        .strategy-section {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .strategy-btn {
+            padding: 10px 12px;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.2s;
+            color: #495057;
+        }
+        
+        .strategy-btn:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        
+        .strategy-btn.active {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: white;
+        }
+        
+        .file-upload {
+            margin-top: 15px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-label {
+            display: block;
+            padding: 10px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .file-label:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        
+        .options-section {
+            padding: 20px;
+            flex-grow: 1;
+        }
+        
+        .option-group {
+            margin-bottom: 15px;
+        }
+        
+        .option-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .option-input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .option-select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+        }
+        
+        .chat-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .chat-subtitle {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .avatar.user {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .avatar.bot {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .message-content {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            max-width: 70%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            white-space: pre-line;
+            line-height: 1.6;
+            font-size: 14px;
+            color: #2d3748;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            background: white;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .message-input {
+            flex: 1;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+        
+        .send-btn {
+            background: #6366f1;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            transition: all 0.2s;
+        }
+        
+        .send-btn:hover {
+            background: #5855eb;
+            transform: translateY(-1px);
+        }
+        
+        .send-btn:disabled {
+            background: #dee2e6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .execute-btn {
+            width: 100%;
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            margin-top: 15px;
+            transition: all 0.2s;
+        }
+        
+        .execute-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        
+        .execute-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .chat-container {
+                flex-direction: column;
+                height: 100vh;
+                width: 100%;
+                border-radius: 0;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+                overflow-y: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">LLM CHAT</div>
+                <button class="new-chat-btn" onclick="clearChat()">
+                    ➕ New Chat
+                </button>
+            </div>
+            
+            <div class="strategy-section">
+                <div class="section-title">STRATEGY</div>
+                <div class="strategy-grid">
+                    <button class="strategy-btn active" data-strategy="chatting_strategy">💬 Chat</button>
+                    <button class="strategy-btn" data-strategy="rag_summary">📄 RAG</button>
+                    <button class="strategy-btn" data-strategy="question_strategy">❓ Questions</button>
+                    <button class="strategy-btn" data-strategy="summarization">📝 Summary</button>
+                </div>
+                
+                <div class="file-upload">
+                    <input type="file" id="jsonFile" class="file-input" accept=".json,.txt,.pdf" onchange="handleFileUpload(event)">
+                    <label for="jsonFile" class="file-label">
+                        📁 Upload JSON/TXT/PDF
+                    </label>
+                    <div id="fileName" style="margin-top: 5px; font-size: 11px; color: #6c757d;"></div>
+                    <button onclick="checkStatus()" style="margin-top: 5px; padding: 5px 10px; font-size: 11px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer;">
+                        📊 Check Status
+                    </button>
+                </div>
+            </div>
+            
+            <div class="options-section">
+                <div class="section-title">OPTIONS</div>
+                
+                <!-- Chat Strategy Options -->
+                <div id="chatting-options" class="strategy-options">
+                    <div class="option-group">
+                        <label class="option-label">Language/Topic</label>
+                        <input type="text" class="option-input" id="chat-topic" placeholder="e.g., Translation platforms">
+                    </div>
+                </div>
+                
+                <!-- RAG Strategy Options -->
+                <div id="rag-options" class="strategy-options hidden">
+                    <div class="option-group">
+                        <label class="option-label">Keywords/Topic</label>
+                        <input type="text" class="option-input" id="rag-keywords" placeholder="e.g., translation, AI, market analysis">
+                    </div>
+                    <button onclick="executeStrategy()" class="execute-btn">
+                        📄 Generate RAG Summary
+                    </button>
+                </div>
+                
+                <!-- Question Strategy Options -->
+                <div id="question-options" class="strategy-options hidden">
+                    <div class="option-group">
+                        <label class="option-label">Number of Questions</label>
+                        <input type="number" class="option-input" id="question-count" value="10" min="1" max="50">
+                    </div>
+                    <div class="option-group">
+                        <label class="option-label">Question Type</label>
+                        <select class="option-select" id="question-type">
+                            <option value="">Default</option>
+                            <option value="simple">Simple</option>
+                            <option value="hard">Hard</option>
+                            <option value="analytical">Analytical</option>
+                        </select>
+                    </div>
+                    <button onclick="executeStrategy()" class="execute-btn">
+                        ❓ Generate Questions
+                    </button>
+                </div>
+                
+                <!-- Summarization Strategy Options -->
+                <div id="summarization-options" class="strategy-options hidden">
+                    <div class="option-group">
+                        <label class="option-label">Summary Length</label>
+                        <select class="option-select" id="summary-length">
+                            <option value="short">Short</option>
+                            <option value="medium">Medium</option>
+                            <option value="long">Long</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label class="option-label">Overview Level</label>
+                        <select class="option-select" id="overview-level">
+                            <option value="high_level">High Level</option>
+                            <option value="low_level">Low Level</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="verbose" class="option-checkbox">
+                            <label class="option-label" for="verbose">Verbose Output</label>
+                        </div>
+                    </div>
+                    <button onclick="executeStrategy()" class="execute-btn">
+                        📝 Generate Summary
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-chat">
+            <div class="chat-header">
+                <div class="chat-title">Strategy Pattern LLM</div>
+                <div class="chat-subtitle" id="current-strategy">Current: Chatting Strategy</div>
+            </div>
+            
+            <div class="messages-container" id="messages">
+                <div class="message">
+                    <div class="avatar bot">🤖</div>
+                    <div class="message-content">
+                        Welcome! I'm ready to help you test your LLM with different strategies. Select a strategy from the sidebar and start chatting!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status" id="status">Ready • Select strategy and options to begin</div>
+            
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea 
+                        class="message-input" 
+                        id="messageInput" 
+                        placeholder="Type your message here..."
+                        onkeypress="handleKeyPress(event)"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                        ➤
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStrategy = 'chatting_strategy';
+        let uploadedDocument = null;
+        let isProcessing = false;
+
+        // Strategy button handling
+        document.querySelectorAll('.strategy-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all buttons
+                document.querySelectorAll('.strategy-btn').forEach(b => b.classList.remove('active'));
+                
+                // Add active class to clicked button
+                e.target.classList.add('active');
+                
+                // Update current strategy
+                currentStrategy = e.target.dataset.strategy;
+                
+                // Update UI
+                updateStrategyUI();
+                updateStatus();
+            });
+        });
+
+        function updateStrategyUI() {
+            // Hide all option groups
+            document.querySelectorAll('.strategy-options').forEach(group => {
+                group.classList.add('hidden');
+            });
+            
+            // Show relevant options
+            const optionsMap = {
+                'chatting_strategy': 'chatting-options',
+                'rag_summary': 'rag-options', 
+                'question_strategy': 'question-options',
+                'summarization': 'summarization-options'
+            };
+            
+            const optionsId = optionsMap[currentStrategy];
+            if (optionsId) {
+                document.getElementById(optionsId).classList.remove('hidden');
+            }
+            
+            // Update header
+            const strategyNames = {
+                'chatting_strategy': 'Chatting Strategy',
+                'rag_summary': 'RAG Summary Strategy',
+                'question_strategy': 'Question Strategy', 
+                'summarization': 'Summarization Strategy'
+            };
+            
+            document.getElementById('current-strategy').textContent = `Current: ${strategyNames[currentStrategy]}`;
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                try {
+                    // Show upload progress
+                    document.getElementById('fileName').innerHTML = '<div class="loading"></div> Uploading...';
+                    
+                    // Create form data for file upload
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    // Upload to backend
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        document.getElementById('fileName').textContent = `❌ ${data.error}`;
+                        uploadedDocument = null;
+                    } else {
+                        uploadedDocument = {
+                            name: file.name,
+                            filepath: data.filepath,
+                            total_documents: data.total_documents,
+                            total_chunks: data.total_chunks
+                        };
+                        document.getElementById('fileName').innerHTML = 
+                            `✅ ${file.name}<br><small>${data.total_documents} docs, ${data.total_chunks} chunks</small>`;
+                        
+                        // Add success message to chat
+                        addMessage('bot', `Document "${file.name}" uploaded and processed successfully! Loaded ${data.total_documents} documents with ${data.total_chunks} chunks. You can now use all strategies.`);
+                    }
+                    
+                } catch (error) {
+                    document.getElementById('fileName').textContent = `❌ Upload failed: ${error.message}`;
+                    uploadedDocument = null;
+                }
+                
+                updateStatus();
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                
+                let statusMsg = `System Status:\n`;
+                statusMsg += `• Initialized: ${status.initialized ? 'Yes' : 'No'}\n`;
+                statusMsg += `• Document loaded: ${status.document_loaded ? 'Yes' : 'No'}\n`;
+                if (status.current_document) {
+                    const filename = status.current_document.split('/').pop();
+                    statusMsg += `• Current file: ${filename}\n`;
+                }
+                statusMsg += `• Documents: ${status.total_documents || 0}\n`;
+                statusMsg += `• Chunks: ${status.total_chunks || 0}`;
+                
+                addMessage('bot', statusMsg);
+            } catch (error) {
+                addMessage('bot', `Failed to check status: ${error.message}`);
+            }
+        }
+
+        function updateStatus() {
+            const hasDoc = uploadedDocument ? 
+                `📄 ${uploadedDocument.name} (${uploadedDocument.total_documents || 0} docs)` : 
+                '📄 No document';
+            const strategy = currentStrategy.replace('_', ' ').toUpperCase();
+            document.getElementById('status').textContent = `${strategy} • ${hasDoc} • Ready`;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function sendMessage() {
+            if (isProcessing) return;
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage('user', message);
+            input.value = '';
+            
+            // Process message
+            processMessage(message);
+        }
+
+        function addMessage(sender, content, isLoading = false) {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${sender}`;
+            avatar.textContent = sender === 'user' ? 'U' : '🤖';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            if (isLoading) {
+                messageContent.innerHTML = '<div class="loading"></div> Processing...';
+            } else {
+                messageContent.textContent = content;
+            }
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageContent;
+        }
+
+        async function executeStrategy() {
+            if (!uploadedDocument || !uploadedDocument.name) {
+                addMessage('bot', 'Please upload a document first before using this strategy.');
+                return;
+            }
+            
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            
+            // Disable all execute buttons
+            document.querySelectorAll('.execute-btn').forEach(btn => btn.disabled = true);
+            
+            // Add loading message
+            const loadingContent = addMessage('bot', '', true);
+            
+            try {
+                const params = getStrategyParameters();
+                
+                let payload;
+                if (currentStrategy === 'rag_summary') {
+                    const keywords = params.keywords || 'document overview';
+                    payload = {
+                        strategy: currentStrategy,
+                        message: keywords,
+                        options: params
+                    };
+                } else {
+                    payload = {
+                        strategy: currentStrategy,
+                        message: "process_document",
+                        options: params
+                    };
+                }
+                
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    loadingContent.textContent = `Error: ${data.error}`;
+                } else {
+                    // Format the LLM output for better display
+                    const formattedText = formatLLMOutput(data.response);
+                    loadingContent.innerHTML = formattedText;
+                }
+                
+            } catch (error) {
+                console.error('API Error:', error);
+                loadingContent.textContent = `Connection Error: ${error.message}. Make sure your Flask server is running on port 5000`;
+            } finally {
+                isProcessing = false;
+                // Re-enable execute buttons
+                document.querySelectorAll('.execute-btn').forEach(btn => btn.disabled = false);
+            }
+        }
+        
+        async function processMessage(message) {
+            // Only allow chat strategy to use the message input
+            if (currentStrategy !== 'chatting_strategy') {
+                addMessage('user', message);
+                addMessage('bot', 'This strategy uses the button in the sidebar. Please click the execute button to run this strategy.');
+                return;
+            }
+            
+            isProcessing = true;
+            document.getElementById('sendBtn').disabled = true;
+            
+            // Add loading message
+            const loadingContent = addMessage('bot', '', true);
+            
+            try {
+                const params = getStrategyParameters();
+                const payload = {
+                    strategy: currentStrategy,
+                    message: message,
+                    options: params
+                };
+                
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    loadingContent.textContent = `Error: ${data.error}`;
+                } else {
+                    const formattedText = formatLLMOutput(data.response);
+                    loadingContent.innerHTML = formattedText;
+                }
+                
+            } catch (error) {
+                console.error('API Error:', error);
+                loadingContent.textContent = `Connection Error: ${error.message}. Make sure your Flask server is running on port 5000`;
+            } finally {
+                isProcessing = false;
+                document.getElementById('sendBtn').disabled = false;
+            }
+        }
+
+        // Keep the simulation function for fallback/testing
+        async function simulateStrategyExecution(message) {
+            // Simulate processing delay
+            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+            
+            // Get strategy-specific parameters
+            const params = getStrategyParameters();
+            
+            // Simulate different responses based on strategy
+            switch (currentStrategy) {
+                case 'chatting_strategy':
+                    return `💬 <strong>Chat Response:</strong><br>This is a simulated response for "${params.topic || message}" using the chatting strategy. In your actual implementation, this would call:<br><br><code>processor.strategy = chatting_strategy<br>processor.execute_task("${message}")</code>`;
+                
+                case 'rag_summary':
+                    return `📄 <strong>RAG Summary:</strong><br>Generated summary for "${params.topic || message}" using RAG (Retrieval-Augmented Generation). This combines retrieved context with generation.<br><br><code>processor.strategy = rag_summary<br>processor.execute_task("${message}")</code>`;
+                
+                case 'question_strategy':
+                    const docStatus = uploadedDocument ? `document "${uploadedDocument.name}"` : 'the provided text';
+                    return `❓ <strong>Generated Questions:</strong><br>Created ${params.count} ${params.type ? params.type + ' ' : ''}questions based on ${docStatus}:<br><br>1. What is the main concept discussed?<br>2. How does this relate to the broader context?<br>3. What are the key implications?<br><br><code>processor.strategy = question_strategy<br>processor.execute_task(document, ${params.count}${params.type ? ', "' + params.type + '"' : ''})</code>`;
+                
+                case 'summarization':
+                    const docName = uploadedDocument ? uploadedDocument.name : 'input text';
+                    return `📝 <strong>${params.length.charAt(0).toUpperCase() + params.length.slice(1)} Summary:</strong><br>Summarized ${docName} with ${params.verbose ? 'verbose' : 'standard'} detail level.<br><br>This is a simulated summary that would be generated by your LLM.<br><br><code>processor.strategy = summarization<br>processor.execute_task(document, length='${params.length}', verbose=${params.verbose})</code>`;
+                
+                default:
+                    return 'Unknown strategy selected.';
+            }
+        }
+
+        function getStrategyParameters() {
+            switch (currentStrategy) {
+                case 'chatting_strategy':
+                    return {
+                        topic: document.getElementById('chat-topic').value
+                    };
+                
+                case 'rag_summary':
+                    return {
+                        keywords: document.getElementById('rag-keywords').value
+                    };
+                
+                case 'question_strategy':
+                    return {
+                        count: document.getElementById('question-count').value,
+                        type: document.getElementById('question-type').value
+                    };
+                
+                case 'summarization':
+                    return {
+                        length: document.getElementById('summary-length').value,
+                        overview_level: document.getElementById('overview-level').value,
+                        verbose: document.getElementById('verbose').checked
+                    };
+                
+                default:
+                    return {};
+            }
+        }
+
+        function clearChat() {
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = `
+                <div class="message">
+                    <div class="avatar bot">🤖</div>
+                    <div class="message-content">
+                        Chat cleared! Ready for a new conversation with your LLM strategy pattern.
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize
+        updateStrategyUI();
+        updateStatus();
+    </script>
+</body>
+</html>
