@@ -1,0 +1,9 @@
+sentence-transformers     
+langchain_huggingface  
+torch
+langchain-core    
+langchain-core faiss-cpu transformers    
+langchain-core faiss-cpu transformers  
+langchain
+langchain_community
+tqdm

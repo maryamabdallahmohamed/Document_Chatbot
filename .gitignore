@@ -2,3 +2,8 @@
 *.pdf
 embedder_model_cache
 .DS_Store
+__pycache__
+logs
+data
+vectorstore
+document_processing.log
