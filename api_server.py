@@ -180,6 +180,7 @@ class DocumentChatbotAPI:
                 # Use first document
                 doc_to_use = self.individual_documents[0]
                 result = self.processor.execute_task(doc_to_use, count, q_type)
+                result=result['qa_output']
                 
             elif strategy_name == 'summarization':
                 if not self.individual_documents:
@@ -330,4 +331,4 @@ if __name__ == '__main__':
     logger.info("  - GET  /api/status    : System status")
     logger.info("  - GET  /api/documents : Document info")
     
-    app.run(debug=True, port=5030, host='0.0.0.0')
+    app.run(debug=True, port=5050, host='0.0.0.0')
