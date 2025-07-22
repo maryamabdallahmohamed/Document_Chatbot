@@ -162,6 +162,7 @@ class DocumentChatbotAPI:
             if strategy_name == 'chatting_strategy':
                 self.processor.strategy = self.chatting_strategy
                 result = self.processor.execute_task(message)
+                result=result['answer']
                 
             elif strategy_name == 'rag_summary':
                 self.processor.strategy = self.rag_summary
