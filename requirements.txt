@@ -10,3 +10,4 @@ tqdm
 flask
 flask-cors
 langdetect
+fuzzywuzzy python-levenshtein

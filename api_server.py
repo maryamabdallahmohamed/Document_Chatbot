@@ -101,7 +101,7 @@ class DocumentChatbotAPI:
         logger.info("✅ Embedder model loaded")
 
         logger.info("🤖 Loading OLLAMA LLM model...")
-        self.llm = OLLAMA_LLM('llama3:8b', './cache/llm_cache').load_model()
+        self.llm = OLLAMA_LLM('qwen3:8b', './cache/qwen3:8b_cache').load_model()
         logger.info("✅ LLM model loaded")
 
     def create_vector_store(self):
