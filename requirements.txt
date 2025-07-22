@@ -9,3 +9,4 @@ torch
 tqdm
 flask
 flask-cors
+langdetect
