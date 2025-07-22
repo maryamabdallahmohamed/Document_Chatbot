@@ -1,9 +1,11 @@
-sentence-transformers     
-langchain_huggingface  
-torch
-langchain-core    
-langchain-core faiss-cpu transformers    
-langchain-core faiss-cpu transformers  
+sentence-transformers
 langchain
-langchain_community
+langchain-core
+langchain-community
+langchain-huggingface
+faiss-cpu
+transformers
+torch
 tqdm
+flask
+flask-cors
