@@ -372,17 +372,17 @@
     <div class="chat-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <div class="logo">LLM CHAT</div>
+                <div class="logo">Document Chatbot Beta Testing</div>
                 <button class="new-chat-btn" onclick="clearChat()">
                     ➕ New Chat
                 </button>
             </div>
             
             <div class="strategy-section">
-                <div class="section-title">STRATEGY</div>
+                <div class="section-title">STRATEGY SELECTION</div>
                 <div class="strategy-grid">
                     <button class="strategy-btn active" data-strategy="chatting_strategy">💬 Chat</button>
-                    <button class="strategy-btn" data-strategy="rag_summary">📄 RAG</button>
+                    <button class="strategy-btn" data-strategy="rag_summary">📄 Specified Summary</button>
                     <button class="strategy-btn" data-strategy="question_strategy">❓ Questions</button>
                     <button class="strategy-btn" data-strategy="summarization">📝 Summary</button>
                 </div>
@@ -390,7 +390,7 @@
                 <div class="file-upload">
                     <input type="file" id="jsonFile" class="file-input" accept=".json,.txt,.pdf" onchange="handleFileUpload(event)">
                     <label for="jsonFile" class="file-label">
-                        📁 Upload JSON/TXT/PDF
+                        📁 Upload JSON File
                     </label>
                     <div id="fileName" style="margin-top: 5px; font-size: 11px; color: #6c757d;"></div>
                     <button onclick="checkStatus()" style="margin-top: 5px; padding: 5px 10px; font-size: 11px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer;">
@@ -748,6 +748,28 @@
             }
         }
         
+        function formatLLMOutput(text) {
+            // Special formatting for question-answer pairs
+            if (text.includes('Q1:') && text.includes('A1:')) {
+                return text
+                    .replace(/Q(\d+):\s*/g, '<br><strong>Q$1:</strong> ')  // Format questions
+                    .replace(/A(\d+):\s*/g, '<br><strong>A$1:</strong> ')  // Format answers
+                    .replace(/^\s*<br>/, '')  // Remove leading line break
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // **bold** text
+                    .replace(/\* /g, '• ')  // Convert * to bullets
+                    .replace(/\n\s*\n/g, '<br><br>')  // Double line breaks
+                    .replace(/\n/g, '<br>');  // Single line breaks
+            }
+            
+            // Regular formatting for other content
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // **bold** text
+                .replace(/\* /g, '• ')  // Convert * to bullets
+                .replace(/(\d+\.\s)/g, '<br>$1')  // Add line break before numbered lists
+                .replace(/\n\s*\n/g, '<br><br>')  // Double line breaks
+                .replace(/\n/g, '<br>');  // Single line breaks
+        }
+
         async function processMessage(message) {
             // Only allow chat strategy to use the message input
             if (currentStrategy !== 'chatting_strategy') {
