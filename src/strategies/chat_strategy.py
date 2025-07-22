@@ -2,11 +2,13 @@ from ..abstracts.abstract_task_strategy import TaskStrategy
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from config.language_detect import returnlang
 import re
 import logging
 from tqdm import tqdm
 
-# Configure logging
+
+# Configure logging 
 logger = logging.getLogger(__name__)
 
 class ChattingStrategy(TaskStrategy):
@@ -43,35 +45,38 @@ class ChattingStrategy(TaskStrategy):
         except Exception as e:
             logger.error(f"❌ Error formatting documents: {str(e)}")
             raise
-
     def _build_chain(self):
         """Build the RAG processing chain."""
         logger.info("🔨 Building RAG chain components...")
         
         try:
-            # Create prompt template
-            logger.debug("📋 Creating prompt template...")
-            prompt_template = """You are a helpful assistant. Use the following context to answer the question.
+            # Modified prompt template with language parameter
+            prompt_template = """IMPORTANT: You must respond entirely in {detected_lang}. All sections, headers, and content must be in {detected_lang} language only.
+
+            You are a helpful multilingual assistant. Use the following context to answer the question in {detected_lang}.
 
             Context:
             {context}
 
             Question: {question}
 
-            Please provide a comprehensive answer based on the context above. You MUST follow this exact format:
+            Please provide a comprehensive answer based on the context above. You MUST respond entirely in {detected_lang} and follow this exact format structure:
 
             RESPONSE:
-            [Your main answer here]
+            [Your main answer here in {detected_lang}]
 
             REASONING:
-            [Explain your reasoning and how you used the context]
+            [Explain your reasoning and how you used the context in {detected_lang}]
 
             SOURCES:
             [List the source numbers you referenced, for example: 1, 3, 5]
             """
-            
-            prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-            logger.debug("✅ Prompt template created")
+                    
+            prompt = PromptTemplate(
+                template=prompt_template, 
+                input_variables=["context", "question", "detected_lang"]
+            )
+            logger.debug("✅ Language-aware prompt template created")
 
             # Define retrieval function
             def retrieve_context(inputs):
@@ -80,23 +85,29 @@ class ChattingStrategy(TaskStrategy):
                 logger.debug(f"📚 Retrieved {len(docs)} relevant documents")
                 return self.format_docs(docs)
 
-            # Build the chain
-            logger.debug("⛓️ Assembling processing chain...")
+            # Language detection function for the chain
+            def detect_language(inputs):
+                detected_lang = returnlang(inputs["question"])
+                logger.debug(f"🌐 Detected language: {detected_lang}")
+                return detected_lang
+
+            # Build the chain with language detection
+            logger.debug("⛓️ Assembling processaing chain...")
             self.chain = ({
-                    "context": RunnableLambda(retrieve_context), 
-                    "question": RunnablePassthrough()
+                    "context": RunnableLambda(retrieve_context),
+                    "question": RunnablePassthrough(),
+                    "detected_lang": RunnableLambda(detect_language)
                 }
                 | prompt
                 | self.llm
                 | StrOutputParser()
             )
             
-            logger.info("✅ RAG chain built successfully")
+            logger.info("✅ RAG chain built successfully with language detection")
             
         except Exception as e:
             logger.error(f"❌ Error building chain: {str(e)}")
             raise
-
     def parse_structured_response(self, response_text):
         """Parse the structured response from the LLM."""
         logger.debug("🔍 Parsing structured response...")
@@ -191,7 +202,11 @@ class ChattingStrategy(TaskStrategy):
                 logger.error("❌ Invalid input question provided")
                 raise ValueError("Question must be a non-empty string")
             
-            # Process with chain
+            # Detect and log language before processing
+            detected_lang = returnlang(question)
+            logger.info(f"🌐 Processing question in detected language: {detected_lang}")
+            
+            # Process with chain - the chain will automatically detect language and pass it to prompt
             logger.info("⛓️ Invoking RAG chain...")
             with tqdm(total=1, desc="🤖 Processing query", unit="query") as pbar:
                 response = self.chain.invoke({"question": question})
@@ -214,9 +229,11 @@ class ChattingStrategy(TaskStrategy):
             # Enhance parsed result with source information
             parsed['source_documents'] = source_docs
             parsed['source_texts'] = [doc.page_content for doc in source_docs]
+            parsed['detected_language'] = detected_lang
             
             logger.info(f"✅ Chat processing completed - Retrieved {len(source_docs)} source documents")
             logger.info(f"📈 Answer length: {len(parsed['answer'])} characters")
+            logger.info(f"🌐 Response language: {detected_lang}")
             
             return parsed
             

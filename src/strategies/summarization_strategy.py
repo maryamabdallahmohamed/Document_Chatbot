@@ -5,7 +5,7 @@ from langchain.schema import Document
 from langchain.prompts import PromptTemplate
 from langchain_core.prompts import ChatPromptTemplate
 from src.abstracts.abstract_task_strategy import TaskStrategy
-
+from config.language_detect import returnlang
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,8 @@ class SummarizationStrategy(TaskStrategy):
         except yaml.YAMLError as e:
             logger.error(f"❌ Error parsing YAML file: {e}")
             raise
-        
+    
+
     def validate_input(self, document):
         """Validate that the document is a non-empty string."""
         logger.debug("🔍 Validating input document...")
@@ -60,31 +61,39 @@ class SummarizationStrategy(TaskStrategy):
         if not self.validate_input(document):
             logger.error("❌ Invalid input document provided")
             raise ValueError("Document must be a non-empty string")
+        
+        # Detect language from document
+        detected_lang = returnlang(document)
+        logger.info(f"🌐 Document language detected as: {detected_lang}")
             
         try:
             if overview_level:
                 logger.info(f"📊 Creating overview at level: {overview_level}")
-                return self._create_overview(document, overview_level, length, verbose)
+                return self._create_overview(document, overview_level, length, verbose, detected_lang)
             else:
                 logger.info("📄 Creating regular summary")
-                return self._create_summary(document, length, verbose)
+                return self._create_summary(document, length, verbose, detected_lang)
                 
         except Exception as e:
             logger.error(f"❌ Summarization task failed: {str(e)}")
             raise
     
-    def _create_overview(self, document, overview_level, length, verbose=False):
+    def _create_overview(self, document, overview_level, length, verbose=False, detected_lang="English"):
         """Create an overview of the document at the specified level and length."""
-        logger.info(f"🔧 Preparing overview template - Level: {overview_level}, Length: {length}, Verbose: {verbose}")
+        logger.info(f"🔧 Preparing overview template - Level: {overview_level}, Length: {length}, Verbose: {verbose}, Language: {detected_lang}")
         
         try:
             template_type = "with_reasoning" if verbose else "base"
             prompt_text = self.overview_templates[overview_level][length][template_type]
             logger.debug(f"📋 Selected template type: {template_type}")
             
+            # Add language instruction to the prompt
+            language_instruction = f"IMPORTANT: You must respond entirely in {detected_lang}. All content, headers, and explanations must be in {detected_lang} language only.\n\n"
+            enhanced_prompt_text = language_instruction + prompt_text
+            
             with tqdm(total=2, desc="🔄 Creating overview", unit="step") as pbar:
                 logger.info("🛠️ Formatting prompt template...")
-                prompt_template = ChatPromptTemplate.from_messages([("system", prompt_text)])
+                prompt_template = ChatPromptTemplate.from_messages([("system", enhanced_prompt_text)])
                 formatted_prompt = prompt_template.format(context=document)
                 pbar.update(1)
                 
@@ -92,7 +101,7 @@ class SummarizationStrategy(TaskStrategy):
                 result = self.llm.invoke(formatted_prompt)
                 pbar.update(1)
             
-            logger.info("✅ Overview created successfully")
+            logger.info(f"✅ Overview created successfully in {detected_lang}")
             print(result)
             return result
             
@@ -103,18 +112,22 @@ class SummarizationStrategy(TaskStrategy):
             logger.error(f"❌ Error creating overview: {str(e)}")
             raise
     
-    def _create_summary(self, document, length, verbose):
+    def _create_summary(self, document, length, verbose, detected_lang="English"):
         """Create a regular summary of the document."""
-        logger.info(f"🔧 Preparing summary template - Length: {length}, Verbose: {verbose}")
+        logger.info(f"🔧 Preparing summary template - Length: {length}, Verbose: {verbose}, Language: {detected_lang}")
         
         try:
             template_type = "with_reasoning" if verbose else "base"
             prompt_text = self.summary_templates[length][template_type]
             logger.debug(f"📋 Selected template type: {template_type}")
             
+            # Add language instruction to the prompt
+            language_instruction = f"IMPORTANT: You must respond entirely in {detected_lang}. All content, headers, and explanations must be in {detected_lang} language only.\n\n"
+            enhanced_prompt_text = language_instruction + prompt_text
+            
             with tqdm(total=2, desc="🔄 Creating summary", unit="step") as pbar:
                 logger.info("🛠️ Formatting prompt template...")
-                prompt_template = ChatPromptTemplate.from_messages([("system", prompt_text)])
+                prompt_template = ChatPromptTemplate.from_messages([("system", enhanced_prompt_text)])
                 formatted_prompt = prompt_template.format(context=document)
                 pbar.update(1)
                 
@@ -122,7 +135,7 @@ class SummarizationStrategy(TaskStrategy):
                 result = self.llm.invoke(formatted_prompt)
                 pbar.update(1)
             
-            logger.info("✅ Summary created successfully")
+            logger.info(f"✅ Summary created successfully in {detected_lang}")
             print(result)
             return result
             
@@ -138,36 +151,43 @@ class Summarization_Rag_Strategy(TaskStrategy):
         logger.info("🔍 Initializing Summarization_Rag_Strategy...")
         self.llm = llm
         self.retriever = retriever
-        
-        logger.info("📋 Setting up RAG prompt template...")
-        self.prompt = PromptTemplate(
-            input_variables=["user_prompt", "context"],
-            template="""
-            You are a helpful assistant.
-
-            The user is interested in the topic: "{user_prompt}"
-
-            Based on the following document excerpts, generate a structured summary.
-
-            Only use the provided content—do not include prior knowledge or assumptions.
-
-            == Document Excerpts ==
-            {context}
-
-            == Summary ==
-            **Main Topic:** [Summarize the general theme of the retrieved content.]
-
-            **Key Points:**
-            - [Most relevant insight #1]
-            - [Relevant insight #2]
-            - [Relevant insight #3]
-
-            **Supporting Details:** [Specific numbers, quotes, or facts.]
-
-            **Conclusion:** [Key implication or recommendation.]
-            """
-        )
         logger.info("✅ Summarization_Rag_Strategy initialized successfully")
+
+    def _create_language_aware_prompt(self, detected_lang):
+        """Create a language-aware RAG prompt template."""
+        logger.info(f"📋 Setting up RAG prompt template for {detected_lang}...")
+        
+        template = f"""
+        IMPORTANT: You must respond entirely in {detected_lang}. All content, headers, and explanations must be in {detected_lang} language only.
+
+        You are a helpful assistant.
+
+        The user is interested in the topic: "{{user_prompt}}"
+
+        Based on the following document excerpts, generate a structured summary in {detected_lang}.
+
+        Only use the provided content—do not include prior knowledge or assumptions.
+
+        == Document Excerpts ==
+        {{context}}
+
+        == Summary ==
+        **Main Topic:** [Summarize the general theme of the retrieved content in {detected_lang}.]
+
+        **Key Points:**
+        - [Most relevant insight #1 in {detected_lang}]
+        - [Relevant insight #2 in {detected_lang}]
+        - [Relevant insight #3 in {detected_lang}]
+
+        **Supporting Details:** [Specific numbers, quotes, or facts in {detected_lang}.]
+
+        **Conclusion:** [Key implication or recommendation in {detected_lang}.]
+        """
+        
+        return PromptTemplate(
+            input_variables=["user_prompt", "context"],
+            template=template
+        )
 
     def validate_input(self, documents):
         """Validate that the input is a non-empty list of Document objects."""
@@ -184,6 +204,13 @@ class Summarization_Rag_Strategy(TaskStrategy):
     def run(self, prompt):
         """Retrieve and summarize relevant chunks."""
         logger.info(f"🔍 Starting RAG summarization for prompt: '{prompt[:50]}...' ")
+        
+        # Detect language from user prompt
+        detected_lang = returnlang(prompt)
+        logger.info(f"🌐 User prompt language detected as: {detected_lang}")
+        
+        # Create language-aware prompt template
+        language_prompt = self._create_language_aware_prompt(detected_lang)
         
         try:
             # Retrieve similar chunks
@@ -219,17 +246,17 @@ class Summarization_Rag_Strategy(TaskStrategy):
             logger.info(f"📝 Combined text length: {len(combined_text)} characters")
 
             # Generate summary using LLM
-            logger.info("🤖 Generating RAG summary...")
+            logger.info(f"🤖 Generating RAG summary in {detected_lang}...")
             with tqdm(total=2, desc="🤖 Generating summary", unit="step") as pbar:
                 logger.info("🛠️ Formatting RAG prompt...")
-                formatted_prompt = self.prompt.format(user_prompt=prompt, context=combined_text)
+                formatted_prompt = language_prompt.format(user_prompt=prompt, context=combined_text)
                 pbar.update(1)
                 
                 logger.info("🔥 Invoking LLM for RAG summary...")
                 result = self.llm.invoke(formatted_prompt)
                 pbar.update(1)
 
-            logger.info("✅ RAG summarization completed successfully")
+            logger.info(f"✅ RAG summarization completed successfully in {detected_lang}")
             print(result)
             return result
             

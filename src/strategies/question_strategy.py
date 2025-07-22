@@ -2,6 +2,7 @@ from ..abstracts.abstract_task_strategy import TaskStrategy
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.schema import Document
+from config.language_detect import returnlang
 import re
 import logging
 from tqdm import tqdm
@@ -22,10 +23,10 @@ class QuestionStrategy(TaskStrategy):
         self._set_prompt()
         
         logger.info("✅ QuestionStrategy initialized successfully")
-    
-    def _set_prompt(self):
-        """Set up the prompt template based on complexity level."""
-        logger.debug(f"📋 Setting prompt for complexity: {self.complexity}")
+        
+    def _set_prompt(self, detected_lang="English"):
+        """Set up the prompt template based on complexity level and language."""
+        logger.debug(f"📋 Setting prompt for complexity: {self.complexity}, language: {detected_lang}")
         
         complexity_instructions = {
             "easy": "Generate simple, basic questions that test understanding of key facts and definitions.",
@@ -38,6 +39,8 @@ class QuestionStrategy(TaskStrategy):
         
         try:
             self.prompt = ChatPromptTemplate.from_template(f"""
+            IMPORTANT: You must respond entirely in {detected_lang}. All questions, text, and any output must be in {detected_lang} language only.
+
             You are a helpful assistant tasked with generating question-answer pairs for study purposes.
 
             Text:
@@ -46,17 +49,17 @@ class QuestionStrategy(TaskStrategy):
             {instruction}
             Generate {{Questions}} meaningful questions based only on the above text. 
 
-            IMPORTANT: Format your output exactly as shown below with no additional text, explanations, or formatting:
+            IMPORTANT: Format your output exactly as shown below with no additional text, explanations, or formatting. All content must be in {detected_lang}:
 
-            Q1: [question text]
-            Q2: [question text]
-            Q3: [question text]
+            Q1: [question text in {detected_lang}]
+            Q2: [question text in {detected_lang}]
+            Q3: [question text in {detected_lang}]
             """)
             
             logger.debug("⛓️ Building QA chain...")
             self.qa_chain = self.prompt | self.llm | StrOutputParser()
             
-            logger.debug("✅ Prompt and chain setup completed")
+            logger.debug(f"✅ Prompt and chain setup completed for {detected_lang}")
             
         except Exception as e:
             logger.error(f"❌ Error setting up prompt: {str(e)}")
@@ -192,10 +195,17 @@ class QuestionStrategy(TaskStrategy):
                 logger.error("❌ Input validation failed")
                 raise ValueError("Input must be a Document with non-empty page_content")
             
+            # Detect language from document content
+            detected_lang = returnlang(doc.page_content)
+            logger.info(f"🌐 Document language detected as: {detected_lang}")
+            
             # Update complexity if provided
             if complexity is not None and complexity != self.complexity:
                 logger.info(f"🔄 Updating complexity to: {complexity}")
                 self.set_complexity(complexity)
+            
+            # Update prompt with detected language
+            self._set_prompt(detected_lang)
             
             # Generate QA output
             logger.info("🤖 Invoking QA generation chain...")
@@ -216,10 +226,7 @@ class QuestionStrategy(TaskStrategy):
             # Log results
             logger.info(f"✅ Question generation successful!")
             logger.info(f"📊 Generated {len(parsed_qa)} question-answer pairs")
-            
-            # Print outputs (preserve original functionality)
-            print(qa_output)
-            print(parsed_qa)
+            logger.info(f"🌐 Generated in language: {detected_lang}")
 
             # Prepare result
             result = {
@@ -227,7 +234,8 @@ class QuestionStrategy(TaskStrategy):
                 "chunk_id": doc.metadata.get("chunk_id"),
                 "text": doc.page_content,
                 "qa_output": qa_output,
-                "parsed_qa": parsed_qa
+                "detected_language": detected_lang,
+                "parsed_qa_pairs": parsed_qa
             }
             
             logger.info(f"📋 Result prepared for pdf_id: {result['pdf_id']}, chunk_id: {result['chunk_id']}")
