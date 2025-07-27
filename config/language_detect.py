@@ -15,18 +15,8 @@ def returnlang(text):
         # Map language codes to full names for better model understanding
         lang_mapping = {
             'ar': 'Arabic',
-            'en': 'English', 
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German',
-            'it': 'Italian',
-            'pt': 'Portuguese',
-            'ru': 'Russian',
-            'zh': 'Chinese',
-            'ja': 'Japanese',
-            'ko': 'Korean',
-            'hi': 'Hindi',
-            'tr': 'Turkish'
+            'en': 'English',
+            'fr': 'French'
         }
         return lang_mapping.get(detected, 'English')
     except Exception as e:
