@@ -1,4 +1,5 @@
 sentence-transformers
+numpy
 langchain
 langchain-core
 langchain-community
@@ -10,4 +11,6 @@ tqdm
 flask
 flask-cors
 langdetect
-fuzzywuzzy python-levenshtein
+fuzzywuzzy
+python-levenshtein
+langchain_ollama
