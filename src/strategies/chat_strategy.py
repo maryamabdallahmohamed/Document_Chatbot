@@ -3,6 +3,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from config.language_detect import returnlang
+from src.core.chat_history_manager import ConversationHistoryManager
 import re
 import logging
 from tqdm import tqdm
@@ -20,6 +21,7 @@ class ChattingStrategy(TaskStrategy):
         self.vector_store = vector_store
         self.top_k = top_k
         self.return_sources = return_sources
+        self.history_manager = ConversationHistoryManager()
         
         logger.info("🔧 Setting embedder model on vector store...")
         self.vector_store.set_embedder_model(embedder)
@@ -51,27 +53,30 @@ class ChattingStrategy(TaskStrategy):
         
         try:
             # Modified prompt template with language parameter
+                        # Enhanced prompt template with conversation history
             prompt_template = """IMPORTANT: You must respond entirely in {detected_lang}. All sections, headers, and content must be in {detected_lang} language only.
 
-            You are a helpful multilingual assistant. Use the following context to answer the question in {detected_lang}.
+            You are a helpful multilingual assistant. Use the following context and conversation history to answer the question in {detected_lang}.
 
-            Context:
+            {conversation_history}
+
+            Document Context:
             {context}
 
-            Question: {question}
+            Current Question: {question}
 
-            Please provide a comprehensive answer based on the context above. You MUST respond entirely in {detected_lang} and follow this exact format structure:
+            Please provide a comprehensive answer based on both the conversation history and document context above. You MUST respond entirely in {detected_lang} and follow this exact format structure:
 
             RESPONSE:
-            [Your main answer here in {detected_lang}]
+            [Your main answer here in {detected_lang}, considering the conversation history if relevant]
 
             REASONING:
-            [Explain your reasoning and how you used the context in {detected_lang}]
+            [Explain your reasoning and how you used both the context and conversation history in {detected_lang}]
 
             SOURCES:
             [List the source numbers you referenced, for example: 1, 3, 5]
             """
-                    
+                                
             prompt = PromptTemplate(
                 template=prompt_template, 
                 input_variables=["context", "question", "detected_lang"]
@@ -90,20 +95,34 @@ class ChattingStrategy(TaskStrategy):
                 detected_lang = returnlang(inputs["question"])
                 logger.debug(f"🌐 Detected language: {detected_lang}")
                 return detected_lang
+            
+            # Conversation history retrieval function
+            def get_conversation_history(inputs):
+                conversation_id = inputs.get("conversation_id", "default")
+                history = self.history_manager.get_conversation_context(conversation_id, limit=6)
+                
+                if history:
+                    formatted_history = f"Previous Conversation:\n{history}\n"
+                    logger.debug(f"📜 Retrieved conversation history for {conversation_id}")
+                else:
+                    formatted_history = ""
+                    logger.debug("📜 No conversation history found")
+                
+                return formatted_history
 
-            # Build the chain with language detection
-            logger.debug("⛓️ Assembling processaing chain...")
+            # Build the enhanced chain with conversation history
+            logger.debug("⛓️ Assembling processing chain with conversation history...")
             self.chain = ({
                     "context": RunnableLambda(retrieve_context),
                     "question": RunnablePassthrough(),
-                    "detected_lang": RunnableLambda(detect_language)
+                    "detected_lang": RunnableLambda(detect_language),
+                    "conversation_history": RunnableLambda(get_conversation_history)
                 }
                 | prompt
                 | self.llm
                 | StrOutputParser()
             )
-            
-            logger.info("✅ RAG chain built successfully with language detection")
+            logger.info("✅ RAG chain built successfully with conversation history and language detection")
             
         except Exception as e:
             logger.error(f"❌ Error building chain: {str(e)}")
@@ -192,10 +211,9 @@ class ChattingStrategy(TaskStrategy):
             
         return is_valid
 
-    def run(self, question):
-        """Main method to run the chain and parse result."""
-        logger.info(f"🚀 Starting chat processing for question: '{question[:50]}...'")
-        
+    def run(self, question,conversation_id):
+        """Main method to run the chain with conversation history."""
+        logger.info(f"🚀 Starting chat processing for conversation: {conversation_id}")
         try:
             # Validate input
             if not self.validate_input(question):
@@ -206,21 +224,25 @@ class ChattingStrategy(TaskStrategy):
             detected_lang = returnlang(question)
             logger.info(f"🌐 Processing question in detected language: {detected_lang}")
             
-            # Process with chain - the chain will automatically detect language and pass it to prompt
-            logger.info("⛓️ Invoking RAG chain...")
+            # Process with chain - including conversation_id for history retrieval
+            logger.info("⛓️ Invoking RAG chain with conversation history...")
             with tqdm(total=1, desc="🤖 Processing query", unit="query") as pbar:
-                response = self.chain.invoke({"question": question})
+                # Pass conversation_id as part of the input
+                chain_input = {
+                    "question": question,
+                    "conversation_id": conversation_id
+                }
+                response = self.chain.invoke(chain_input)
                 pbar.update(1)
             
             logger.info("✅ Chain invocation completed")
-
+            
             # Parse response
             logger.info("🔍 Parsing structured response...")
             parsed = self.parse_structured_response(response)
             logger.info("📊 Response parsed successfully")
-            print(f"Parsed response: {parsed}")  
-
-            # Retrieve source documents
+            
+            # Retrieve source documents for additional info
             logger.info("📚 Retrieving source documents...")
             with tqdm(total=1, desc="📖 Getting sources", unit="retrieval") as pbar:
                 source_docs = self.vector_store.get_relevant_documents(question, top_k=self.top_k)
@@ -230,13 +252,27 @@ class ChattingStrategy(TaskStrategy):
             parsed['source_documents'] = source_docs
             parsed['source_texts'] = [doc.page_content for doc in source_docs]
             parsed['detected_language'] = detected_lang
+            parsed['conversation_id'] = conversation_id
             
-            logger.info(f"✅ Chat processing completed - Retrieved {len(source_docs)} source documents")
+            # Save conversation to history AFTER successful processing
+            logger.info(f"💾 Saving conversation to history for ID: {conversation_id}")
+            self.history_manager.add_user_message(conversation_id, question)
+            self.history_manager.add_ai_message(conversation_id, parsed['answer'])
+            
+            logger.info(f"✅ Chat processing completed for conversation: {conversation_id}")
             logger.info(f"📈 Answer length: {len(parsed['answer'])} characters")
             logger.info(f"🌐 Response language: {detected_lang}")
             
             return parsed
             
         except Exception as e:
-            logger.error(f"❌ Chat processing failed: {str(e)}")
+            logger.error(f"❌ Chat processing failed for conversation {conversation_id}: {str(e)}")
+            
+            # Save error to history as well for context
+            try:
+                self.history_manager.add_user_message(conversation_id, question)
+                self.history_manager.add_ai_message(conversation_id, f"I apologize, but I encountered an error: {str(e)}")
+            except Exception as history_error:
+                logger.error(f"❌ Failed to save error to history: {str(history_error)}")
+            
             raise
