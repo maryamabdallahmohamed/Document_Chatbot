@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,11 +61,45 @@
             cursor: pointer;
             font-weight: 500;
             transition: all 0.2s;
+            margin-bottom: 10px;
         }
         
         .new-chat-btn:hover {
             background: #5855eb;
             transform: translateY(-1px);
+        }
+        
+        .conversation-info {
+            font-size: 11px;
+            color: #6c757d;
+            padding: 8px 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
+        .conversation-controls {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .mini-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s;
+        }
+        
+        .mini-btn:hover {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
         }
         
         .strategy-section {
@@ -322,6 +357,11 @@
             animation: spin 1s linear infinite;
         }
         
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .execute-btn {
             width: 100%;
             background: #10b981;
@@ -351,6 +391,24 @@
             display: none;
         }
         
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
         @media (max-width: 768px) {
             .chat-container {
                 flex-direction: column;
@@ -376,6 +434,15 @@
                 <button class="new-chat-btn" onclick="clearChat()">
                     ➕ New Chat
                 </button>
+                <div class="conversation-info" id="conversationInfo">
+                    <div>Current Conversation:</div>
+                    <div id="currentConversationId">Loading...</div>
+                    <div class="conversation-controls">
+                        <button class="mini-btn" onclick="startNewConversation()">🆕 New</button>
+                        <button class="mini-btn" onclick="viewConversationHistory()">📜 History</button>
+                        <button class="mini-btn" onclick="clearCurrentConversation()">🧹 Clear</button>
+                    </div>
+                </div>
             </div>
             
             <div class="strategy-section">
@@ -505,9 +572,40 @@
     </div>
 
     <script>
+        // Global variables
         let currentStrategy = 'chatting_strategy';
+        let currentConversationId = generateConversationId();
         let uploadedDocument = null;
         let isProcessing = false;
+        let isSystemInitialized = false;
+
+        // Generate unique conversation ID
+        function generateConversationId() {
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substr(2, 9);
+            return `conv_${timestamp}_${random}`;
+        }
+
+        // Update conversation display
+        function updateConversationDisplay() {
+            const shortId = currentConversationId.substr(5, 12) + '...';
+            document.getElementById('currentConversationId').textContent = shortId;
+            document.title = `Chat - ${shortId}`;
+        }
+
+        // Check system status
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                isSystemInitialized = data.initialized;
+                return data;
+            } catch (error) {
+                console.error('Error checking system status:', error);
+                isSystemInitialized = false;
+                return null;
+            }
+        }
 
         // Strategy button handling
         document.querySelectorAll('.strategy-btn').forEach(btn => {
@@ -557,6 +655,162 @@
             document.getElementById('current-strategy').textContent = `Current: ${strategyNames[currentStrategy]}`;
         }
 
+        // New conversation management functions
+        async function startNewConversation() {
+            const messagesContainer = document.getElementById('messages');
+            
+            // Generate new conversation ID
+            const oldConversationId = currentConversationId;
+            currentConversationId = generateConversationId();
+            
+            console.log(`🆕 Starting new conversation: ${currentConversationId}`);
+            console.log(`📝 Previous conversation: ${oldConversationId}`);
+            
+            // Update display
+            updateConversationDisplay();
+            
+            // Clear the UI
+            messagesContainer.innerHTML = `
+                <div class="message">
+                    <div class="avatar bot">🤖</div>
+                    <div class="message-content">
+                        🆕 New conversation started!<br>
+                        <small>Conversation ID: ${currentConversationId.substr(5, 12)}...</small><br>
+                        Ready for your questions!
+                    </div>
+                </div>
+            `;
+            
+            updateStatus();
+        }
+
+        async function clearChat() {
+            const messagesContainer = document.getElementById('messages');
+            
+            // Show loading state
+            messagesContainer.innerHTML = `
+                <div class="message">
+                    <div class="avatar bot">🤖</div>
+                    <div class="message-content">
+                        <div class="loading"></div> Clearing chat and preparing new conversation...
+                    </div>
+                </div>
+            `;
+            
+            try {
+                // Clear the current conversation on the server
+                if (currentConversationId !== 'default') {
+                    await fetch(`/api/conversations/${currentConversationId}/clear`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                }
+                
+                // Generate new conversation ID
+                const oldConversationId = currentConversationId;
+                currentConversationId = generateConversationId();
+                
+                console.log(`🔄 New conversation started: ${currentConversationId}`);
+                
+                // Check system status
+                const systemStatus = await checkSystemStatus();
+                
+                let statusMessage = '';
+                if (!systemStatus || !systemStatus.initialized) {
+                    statusMessage = ' Please upload a document to start chatting.';
+                    isSystemInitialized = false;
+                } else {
+                    statusMessage = ` System is ready with ${systemStatus.total_documents} documents loaded.`;
+                    isSystemInitialized = true;
+                }
+                
+                // Update the UI
+                messagesContainer.innerHTML = `
+                    <div class="message">
+                        <div class="avatar bot">🤖</div>
+                        <div class="message-content">
+                            🆕 New conversation started!<br>
+                            <small>Conversation ID: ${currentConversationId.substr(5, 12)}...</small><br>
+                            ${statusMessage}
+                        </div>
+                    </div>
+                `;
+                
+                // Update conversation display
+                updateConversationDisplay();
+                
+            } catch (error) {
+                console.error('Error clearing chat:', error);
+                messagesContainer.innerHTML = `
+                    <div class="message">
+                        <div class="avatar bot">🤖</div>
+                        <div class="message-content">
+                            ❌ Error starting new conversation. Please try again.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function clearCurrentConversation() {
+            try {
+                await fetch(`/api/conversations/${currentConversationId}/clear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const messagesContainer = document.getElementById('messages');
+                messagesContainer.innerHTML = `
+                    <div class="message">
+                        <div class="avatar bot">🤖</div>
+                        <div class="message-content">
+                            🧹 Conversation history cleared! Current conversation continues with fresh context.
+                        </div>
+                    </div>
+                `;
+                
+                console.log(`🧹 Cleared conversation: ${currentConversationId}`);
+            } catch (error) {
+                console.error('Error clearing conversation:', error);
+                addMessage('bot', '❌ Error clearing conversation history. Please try again.');
+            }
+        }
+
+        async function viewConversationHistory() {
+            try {
+                const response = await fetch(`/api/conversations/${currentConversationId}/history`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    addMessage('bot', `Error loading history: ${data.error}`);
+                    return;
+                }
+                
+                let historyText = `📜 Conversation History (${data.total_messages} messages):\n\n`;
+                
+                if (data.messages.length === 0) {
+                    historyText += 'No messages in this conversation yet.';
+                } else {
+                    data.messages.forEach((msg, index) => {
+                        const sender = msg.type === 'human' ? '👤 You' : '🤖 Bot';
+                        const content = msg.content.length > 100 ? 
+                            msg.content.substring(0, 100) + '...' : 
+                            msg.content;
+                        historyText += `${sender}: ${content}\n\n`;
+                    });
+                }
+                
+                addMessage('bot', historyText);
+            } catch (error) {
+                console.error('Error viewing history:', error);
+                addMessage('bot', '❌ Error loading conversation history. Please try again.');
+            }
+        }
+
         async function handleFileUpload(event) {
             const file = event.target.files[0];
             if (file) {
@@ -579,6 +833,7 @@
                     if (data.error) {
                         document.getElementById('fileName').textContent = `❌ ${data.error}`;
                         uploadedDocument = null;
+                        isSystemInitialized = false;
                     } else {
                         uploadedDocument = {
                             name: file.name,
@@ -589,13 +844,16 @@
                         document.getElementById('fileName').innerHTML = 
                             `✅ ${file.name}<br><small>${data.total_documents} docs, ${data.total_chunks} chunks</small>`;
                         
+                        isSystemInitialized = true;
+                        
                         // Add success message to chat
-                        addMessage('bot', `Document "${file.name}" uploaded and processed successfully! Loaded ${data.total_documents} documents with ${data.total_chunks} chunks. You can now use all strategies.`);
+                        addMessage('bot', `Document "${file.name}" uploaded and processed successfully! Loaded ${data.total_documents} documents with ${data.total_chunks} chunks. System initialized and ready for all strategies.`);
                     }
                     
                 } catch (error) {
                     document.getElementById('fileName').textContent = `❌ Upload failed: ${error.message}`;
                     uploadedDocument = null;
+                    isSystemInitialized = false;
                 }
                 
                 updateStatus();
@@ -615,9 +873,14 @@
                     statusMsg += `• Current file: ${filename}\n`;
                 }
                 statusMsg += `• Documents: ${status.total_documents || 0}\n`;
-                statusMsg += `• Chunks: ${status.total_chunks || 0}`;
+                statusMsg += `• Chunks: ${status.total_chunks || 0}\n`;
+                statusMsg += `• Current Conversation: ${currentConversationId.substr(5, 12)}...`;
                 
                 addMessage('bot', statusMsg);
+                
+                // Update system status
+                isSystemInitialized = status.initialized;
+                
             } catch (error) {
                 addMessage('bot', `Failed to check status: ${error.message}`);
             }
@@ -628,7 +891,8 @@
                 `📄 ${uploadedDocument.name} (${uploadedDocument.total_documents || 0} docs)` : 
                 '📄 No document';
             const strategy = currentStrategy.replace('_', ' ').toUpperCase();
-            document.getElementById('status').textContent = `${strategy} • ${hasDoc} • Ready`;
+            const initStatus = isSystemInitialized ? 'Ready' : 'Need Upload';
+            document.getElementById('status').textContent = `${strategy} • ${hasDoc} • ${initStatus}`;
         }
 
         function handleKeyPress(event) {
@@ -638,13 +902,23 @@
             }
         }
 
-        function sendMessage() {
+        async function sendMessage() {
             if (isProcessing) return;
             
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
             if (!message) return;
+            
+            // Check if system is initialized for chatting strategy
+            if (currentStrategy === 'chatting_strategy' && !isSystemInitialized) {
+                const systemStatus = await checkSystemStatus();
+                if (!systemStatus || !systemStatus.initialized) {
+                    addMessage('bot', '⚠️ Please upload a document first before starting a chat.');
+                    return;
+                }
+                isSystemInitialized = true;
+            }
             
             // Add user message to chat
             addMessage('user', message);
@@ -669,7 +943,7 @@
             if (isLoading) {
                 messageContent.innerHTML = '<div class="loading"></div> Processing...';
             } else {
-                messageContent.textContent = content;
+                messageContent.innerHTML = formatLLMOutput(content);
             }
             
             messageDiv.appendChild(avatar);
@@ -706,15 +980,19 @@
                     payload = {
                         strategy: currentStrategy,
                         message: keywords,
+                        conversation_id: currentConversationId,
                         options: params
                     };
                 } else {
                     payload = {
                         strategy: currentStrategy,
                         message: "process_document",
+                        conversation_id: currentConversationId,
                         options: params
                     };
                 }
+                
+                console.log(`📤 Executing ${currentStrategy} in conversation: ${currentConversationId}`);
                 
                 const response = await fetch('/api/process', {
                     method: 'POST',
@@ -731,16 +1009,29 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    loadingContent.textContent = `Error: ${data.error}`;
+                    loadingContent.innerHTML = `<div class="error">Error: ${data.error}</div>`;
                 } else {
                     // Format the LLM output for better display
                     const formattedText = formatLLMOutput(data.response);
                     loadingContent.innerHTML = formattedText;
+                    
+                    // Show additional info if available
+                    if (data.detected_language || data.source_docs_count) {
+                        let additionalInfo = '<br><small>';
+                        if (data.detected_language) {
+                            additionalInfo += `🌐 Language: ${data.detected_language} `;
+                        }
+                        if (data.source_docs_count) {
+                            additionalInfo += `📚 Sources: ${data.source_docs_count}`;
+                        }
+                        additionalInfo += '</small>';
+                        loadingContent.innerHTML += additionalInfo;
+                    }
                 }
                 
             } catch (error) {
                 console.error('API Error:', error);
-                loadingContent.textContent = `Connection Error: ${error.message}. Make sure your Flask server is running on port 5000`;
+                loadingContent.innerHTML = `<div class="error">Connection Error: ${error.message}. Make sure your Flask server is running on port 5050</div>`;
             } finally {
                 isProcessing = false;
                 // Re-enable execute buttons
@@ -749,6 +1040,8 @@
         }
         
         function formatLLMOutput(text) {
+            if (!text) return '';
+            
             // Special formatting for question-answer pairs
             if (text.includes('Q1:') && text.includes('A1:')) {
                 return text
@@ -773,7 +1066,6 @@
         async function processMessage(message) {
             // Only allow chat strategy to use the message input
             if (currentStrategy !== 'chatting_strategy') {
-                addMessage('user', message);
                 addMessage('bot', 'This strategy uses the button in the sidebar. Please click the execute button to run this strategy.');
                 return;
             }
@@ -789,8 +1081,11 @@
                 const payload = {
                     strategy: currentStrategy,
                     message: message,
+                    conversation_id: currentConversationId,
                     options: params
                 };
+                
+                console.log(`📤 Sending message in conversation: ${currentConversationId}`);
                 
                 const response = await fetch('/api/process', {
                     method: 'POST',
@@ -807,47 +1102,30 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    loadingContent.textContent = `Error: ${data.error}`;
+                    loadingContent.innerHTML = `<div class="error">Error: ${data.error}</div>`;
                 } else {
                     const formattedText = formatLLMOutput(data.response);
                     loadingContent.innerHTML = formattedText;
+                    
+                    // Show additional info if available
+                    let additionalInfo = '';
+                    if (data.detected_language) {
+                        additionalInfo += `<br><small>🌐 Language: ${data.detected_language}</small>`;
+                    }
+                    if (data.source_docs_count) {
+                        additionalInfo += `<br><small>📚 Sources used: ${data.source_docs_count}</small>`;
+                    }
+                    if (additionalInfo) {
+                        loadingContent.innerHTML += additionalInfo;
+                    }
                 }
                 
             } catch (error) {
                 console.error('API Error:', error);
-                loadingContent.textContent = `Connection Error: ${error.message}. Make sure your Flask server is running on port 5000`;
+                loadingContent.innerHTML = `<div class="error">Connection Error: ${error.message}. Make sure your Flask server is running on port 5050</div>`;
             } finally {
                 isProcessing = false;
                 document.getElementById('sendBtn').disabled = false;
-            }
-        }
-
-        // Keep the simulation function for fallback/testing
-        async function simulateStrategyExecution(message) {
-            // Simulate processing delay
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-            
-            // Get strategy-specific parameters
-            const params = getStrategyParameters();
-            
-            // Simulate different responses based on strategy
-            switch (currentStrategy) {
-                case 'chatting_strategy':
-                    return `💬 <strong>Chat Response:</strong><br>This is a simulated response for "${params.topic || message}" using the chatting strategy. In your actual implementation, this would call:<br><br><code>processor.strategy = chatting_strategy<br>processor.execute_task("${message}")</code>`;
-                
-                case 'rag_summary':
-                    return `📄 <strong>RAG Summary:</strong><br>Generated summary for "${params.topic || message}" using RAG (Retrieval-Augmented Generation). This combines retrieved context with generation.<br><br><code>processor.strategy = rag_summary<br>processor.execute_task("${message}")</code>`;
-                
-                case 'question_strategy':
-                    const docStatus = uploadedDocument ? `document "${uploadedDocument.name}"` : 'the provided text';
-                    return `❓ <strong>Generated Questions:</strong><br>Created ${params.count} ${params.type ? params.type + ' ' : ''}questions based on ${docStatus}:<br><br>1. What is the main concept discussed?<br>2. How does this relate to the broader context?<br>3. What are the key implications?<br><br><code>processor.strategy = question_strategy<br>processor.execute_task(document, ${params.count}${params.type ? ', "' + params.type + '"' : ''})</code>`;
-                
-                case 'summarization':
-                    const docName = uploadedDocument ? uploadedDocument.name : 'input text';
-                    return `📝 <strong>${params.length.charAt(0).toUpperCase() + params.length.slice(1)} Summary:</strong><br>Summarized ${docName} with ${params.verbose ? 'verbose' : 'standard'} detail level.<br><br>This is a simulated summary that would be generated by your LLM.<br><br><code>processor.strategy = summarization<br>processor.execute_task(document, length='${params.length}', verbose=${params.verbose})</code>`;
-                
-                default:
-                    return 'Unknown strategy selected.';
             }
         }
 
@@ -881,21 +1159,39 @@
             }
         }
 
-        function clearChat() {
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log(`🚀 Page loaded with conversation: ${currentConversationId}`);
+            
+            // Check initial system status
+            await checkSystemStatus();
+            
+            // Update conversation display
+            updateConversationDisplay();
+            
+            // Update initial status
+            updateStrategyUI();
+            updateStatus();
+            
+            // Add initial welcome message with conversation info
             const messagesContainer = document.getElementById('messages');
-            messagesContainer.innerHTML = `
-                <div class="message">
-                    <div class="avatar bot">🤖</div>
-                    <div class="message-content">
-                        Chat cleared! Ready for a new conversation with your LLM strategy pattern.
-                    </div>
-                </div>
-            `;
-        }
+            if (messagesContainer && messagesContainer.children.length <= 1) {
+                const statusMessage = isSystemInitialized ? 
+                    'System ready! You can start chatting.' : 
+                    'Please upload a document to initialize the system.';
+                    
+                const welcomeMessage = `Welcome! ${statusMessage}\n\nConversation ID: ${currentConversationId.substr(5, 12)}...\n\nSelect a strategy from the sidebar and start chatting!`;
+                
+                // Update the existing welcome message
+                const existingMessage = messagesContainer.querySelector('.message-content');
+                if (existingMessage) {
+                    existingMessage.innerHTML = formatLLMOutput(welcomeMessage);
+                }
+            }
+        });
 
         // Initialize
-        updateStrategyUI();
-        updateStatus();
+        console.log(`🆕 Initial conversation: ${currentConversationId}`);
     </script>
 </body>
 </html>
