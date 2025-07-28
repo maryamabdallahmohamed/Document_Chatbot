@@ -8,3 +8,4 @@ data
 vectorstore
 document_processing.log
 docker_help.txt
+cache
