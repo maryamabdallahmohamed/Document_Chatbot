@@ -10,6 +10,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 import traceback
 from flask import Flask, send_from_directory
+from src.core.chat_history_manager import ConversationHistoryManager
 # Setup path and imports (same as your bot.py)
 SRC_ROOT = Path(__file__).parent / "src"
 sys.path.insert(0, str(SRC_ROOT))
@@ -63,6 +64,7 @@ class DocumentChatbotAPI:
         self.multilingual_embedder = None
         self.current_document_path = None
         self.is_initialized = False
+        self.history_manager = ConversationHistoryManager() 
         
     def setup_logging(self):
         """Configure logging for the pipeline."""
@@ -150,7 +152,7 @@ class DocumentChatbotAPI:
             logger.error(f"❌ System initialization failed: {str(e)}")
             return False
 
-    def execute_strategy(self, strategy_name, message, options=None):
+    def execute_strategy(self, strategy_name, message, options=None,conversation_id="default"):
         """Execute a strategy with given parameters."""
         if not self.is_initialized:
             return {"error": "System not initialized. Please upload a document first."}
@@ -161,7 +163,7 @@ class DocumentChatbotAPI:
                 
             if strategy_name == 'chatting_strategy':
                 self.processor.strategy = self.chatting_strategy
-                result = self.processor.execute_task(message)
+                result = self.processor.execute_task(message,conversation_id)
                 result=result['answer']
                 
             elif strategy_name == 'rag_summary':
@@ -289,7 +291,7 @@ def process_message():
             return jsonify({'error': 'Strategy and message are required'}), 400
         
         # Execute the strategy
-        result = chatbot_api.execute_strategy(strategy, message, options)
+        result = chatbot_api.execute_strategy(strategy, message, options, conversation_id=data.get('conversation_id'))
         
         return jsonify(result)
         
