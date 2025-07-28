@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  # API Server (handles everything including bot orchestration)
+  api-server:
+    build: .
+    container_name: app-api-server
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./cache:/app/cache
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./embedder_model_cache:/app/embedder_model_cache
+      - ./frontend:/app/frontend
+      - ./logs:/app/logs
+      - ./notebooks:/app/notebooks
+      - ./src:/app/src
+      - ./vectorstore:/app/vectorstore
+    environment:
+      - FLASK_ENV=development
+      - API_PORT=5050
+
+
+    # Run as current user to avoid permission issues
+    user: "${UID:-1000}:${GID:-1000}"
+    command: ["python", "api_server.py"]
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
+  # Redis (optional - only if your app uses it for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: app-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - redis  # Optional service - only starts when explicitly requested
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
