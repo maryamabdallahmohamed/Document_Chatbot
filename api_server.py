@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import traceback
-
+from flask import Flask, send_from_directory
 # Setup path and imports (same as your bot.py)
 SRC_ROOT = Path(__file__).parent / "src"
 sys.path.insert(0, str(SRC_ROOT))
@@ -85,7 +85,7 @@ class DocumentChatbotAPI:
         ]
         logger.info(f"✅ Created {len(individual_documents)} individual documents")
 
-        logger.info("✂️ Chunking documents...")
+        logger.info("✂️ Chunking documents...") 
         chunked_docs = docs.chunk_documents(individual_documents)
         logger.info(f"✅ Document chunking completed - {len(chunked_docs)} chunks created")
 
@@ -254,7 +254,7 @@ def upload_file():
         filename = f"{timestamp}_{filename}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
-        
+
         logger.info(f"File uploaded: {filepath}")
         
         # Initialize the system with the new document
@@ -322,6 +322,15 @@ def get_documents():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('frontend', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('frontend', filename)
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Document Chatbot API Server...")
