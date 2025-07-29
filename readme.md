@@ -76,7 +76,6 @@ The application uses a comprehensive configuration system that supports environm
 |----------|----------|---------|-------------|
 | **Models** | `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model for document processing |
 | | `BATCH_SIZE` | `32` | Batch size for embedding generation |
-| | `DEFAULT_LLM_MODEL` | `llama3:8b` | Primary LLM model |
 | | `QWEN3_MODEL` | `qwen3:8b` | Alternative LLM model |
 | | `RERANKER_MODEL` | `BAAI/bge-reranker-v2-m3` | Reranking model for improved retrieval |
 | **Processing** | `CHUNK_SIZE` | `200` | Document chunk size for processing |
