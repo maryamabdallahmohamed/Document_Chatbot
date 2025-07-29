@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 from langchain_huggingface import HuggingFaceEmbeddings
+from config.settings import EMBEDDER_CACHE_DIR
 
 class Embedder(ABC): 
     def __init__(self, model_name, batch_size):
@@ -13,7 +14,7 @@ class Embedder(ABC):
             else 'cpu'
         )
         self.embedding_model = HuggingFaceEmbeddings(model_name=model_name,model_kwargs={'device': self.device},encode_kwargs={'normalize_embeddings': True},
-                                                     show_progress=True,cache_folder='./embedder_model_cache')
+                                                     show_progress=True,cache_folder=str(EMBEDDER_CACHE_DIR))
 
     @abstractmethod
     def embed_documents(self, documents):

@@ -8,6 +8,7 @@ from src.abstracts.abstract_task_strategy import TaskStrategy
 from config.language_detect import returnlang
 from fuzzywuzzy import fuzz
 from src.models.reranker import Reranker
+from config.settings import FUZZY_THRESHOLD, DEFAULT_TOP_K
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +63,11 @@ class SummarizationStrategy(TaskStrategy):
         
         if not self.validate_input(document):
             logger.error("❌ Invalid input document provided")
+            
             raise ValueError("Document must be a non-empty string")
         
         # Detect language from document
         detected_lang = returnlang(document)
-        logger.info(f"🌐 Document language detected as: {detected_lang}")
             
         try:
             if overview_level:
@@ -152,8 +153,13 @@ class SummarizationStrategy(TaskStrategy):
 
 
 class Summarization_Rag_Strategy(TaskStrategy):
-    def __init__(self, llm, retriever, fuzzy_threshold: int = 70, top_k: int = 5):
+    def __init__(self, llm, retriever, fuzzy_threshold: int = None, top_k: int = None):
         logger.info("🔍 Initializing Summarization_Rag_Strategy...")
+        if fuzzy_threshold is None:
+            fuzzy_threshold = FUZZY_THRESHOLD
+        if top_k is None:
+            top_k = DEFAULT_TOP_K
+        
         self.llm = llm
         self.retriever = retriever
         self.fuzzy_threshold = fuzzy_threshold

@@ -4,9 +4,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 import logging
 from tqdm import tqdm
 from abc import ABC, abstractmethod
+from config.settings import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, LOG_LEVEL
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL),
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
@@ -17,8 +18,8 @@ class BasePreprocessor(ABC):
         logger.info("📄 Setting up text splitter configuration...")
         
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=200,
-            chunk_overlap=50, 
+            chunk_size=DEFAULT_CHUNK_SIZE,
+            chunk_overlap=DEFAULT_CHUNK_OVERLAP, 
             length_function=lambda x: len(x.split()),
             separators=["\n\n\n", "\n\n", "\n", ". ", "! ", "? ", "; ", ", ", " ", ""],
             keep_separator=False,
@@ -26,7 +27,7 @@ class BasePreprocessor(ABC):
             strip_whitespace=True
         )
         
-        logger.info("✅ Text splitter configured - Chunk size: 200, Overlap: 50")
+        logger.info(f"✅ Text splitter configured - Chunk size: {DEFAULT_CHUNK_SIZE}, Overlap: {DEFAULT_CHUNK_OVERLAP}")
         logger.info("✅ BasePreprocessor initialized successfully")
 
     @abstractmethod

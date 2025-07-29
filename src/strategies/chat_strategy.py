@@ -4,6 +4,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from config.language_detect import returnlang
 from src.core.chat_history_manager import ConversationHistoryManager
+from config.settings import DEFAULT_TOP_K, DEFAULT_CONVERSATION_HISTORY_LIMIT
 import re
 import logging
 from tqdm import tqdm
@@ -13,7 +14,9 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 class ChattingStrategy(TaskStrategy):
-    def __init__(self, llm, vector_store, embedder, top_k=5, return_sources=True):
+    def __init__(self, llm, vector_store, embedder, top_k=None, return_sources=True):
+        if top_k is None:
+            top_k = DEFAULT_TOP_K
         logger.info("💬 Initializing ChattingStrategy...")
         logger.info(f"⚙️ Configuration - top_k: {top_k}, return_sources: {return_sources}")
         
@@ -99,7 +102,7 @@ class ChattingStrategy(TaskStrategy):
             # Conversation history retrieval function
             def get_conversation_history(inputs):
                 conversation_id = inputs.get("conversation_id", "default")
-                history = self.history_manager.get_conversation_context(conversation_id, limit=6)
+                history = self.history_manager.get_conversation_context(conversation_id, limit=DEFAULT_CONVERSATION_HISTORY_LIMIT)
                 
                 if history:
                     formatted_history = f"Previous Conversation:\n{history}\n"

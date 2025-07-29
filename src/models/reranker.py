@@ -2,10 +2,13 @@ from sentence_transformers import CrossEncoder
 import logging as logger
 from tqdm import tqdm
 from langchain.schema import Document
+from config.settings import DEFAULT_RERANKER_MODEL, RERANKER_CACHE_DIR
 
 class Reranker:
-    def __init__(self, model_name="BAAI/bge-reranker-v2-m3"):
-        self.reranker = CrossEncoder(model_name, cache_folder='./cache/reranker_cache')
+    def __init__(self, model_name=None):
+        if model_name is None:
+            model_name = DEFAULT_RERANKER_MODEL
+        self.reranker = CrossEncoder(model_name, cache_folder=str(RERANKER_CACHE_DIR))
         logger.info("✅ Reranker model loaded successfully")
 
     def rerank_chunks(self, query, chunks):
