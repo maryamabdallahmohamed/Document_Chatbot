@@ -27,6 +27,11 @@ from src.strategies.question_strategy import QuestionStrategy
 from src.strategies.summarization_strategy import SummarizationStrategy, Summarization_Rag_Strategy
 from src.core.task_processor import TaskProcessor
 from src.processors.json_processor import JSONPreprocessor
+from config.settings import (
+    DEFAULT_EMBEDDING_MODEL, DEFAULT_BATCH_SIZE, OLLAMA_MODELS,
+    API_HOST, API_PORT, API_DEBUG, UPLOAD_FOLDER, ALLOWED_EXTENSIONS,
+    MAX_CONTENT_LENGTH, LOG_LEVEL, LLM_CACHE_DIR
+)
 
 app = Flask(__name__, 
            template_folder='frontend',
@@ -34,14 +39,13 @@ app = Flask(__name__,
 CORS(app)
 
 # Configuration
-UPLOAD_FOLDER = 'data'
-ALLOWED_EXTENSIONS = {'json', 'txt', 'pdf'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs("logs", exist_ok=True)
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL),
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('logs/api_server.log'),
@@ -97,13 +101,13 @@ class DocumentChatbotAPI:
         """Initialize embedder and LLM models."""
         logger.info("🧠 Initializing multilingual embedder model...")
         self.multilingual_embedder = MultilingualEmbedder(
-            model_name="sentence-transformers/all-MiniLM-L6-v2", 
-            batch_size=32
+            model_name=DEFAULT_EMBEDDING_MODEL, 
+            batch_size=DEFAULT_BATCH_SIZE
         )
         logger.info("✅ Embedder model loaded")
 
         logger.info("🤖 Loading OLLAMA LLM model...")
-        self.llm = OLLAMA_LLM('qwen3:8b', './cache/qwen3:8b_cache').load_model()
+        self.llm = OLLAMA_LLM(OLLAMA_MODELS['qwen3'], f'{LLM_CACHE_DIR}/qwen3_cache').load_model()
         logger.info("✅ LLM model loaded")
 
     def create_vector_store(self):
@@ -343,4 +347,4 @@ if __name__ == '__main__':
     logger.info("  - GET  /api/status    : System status")
     logger.info("  - GET  /api/documents : Document info")
     
-    app.run(debug=True, port=5050, host='0.0.0.0')
+    app.run(debug=API_DEBUG, port=API_PORT, host=API_HOST)
