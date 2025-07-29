@@ -21,6 +21,10 @@ from src.strategies.question_strategy import QuestionStrategy
 from src.strategies.summarization_strategy import SummarizationStrategy, Summarization_Rag_Strategy
 from src.core.task_processor import TaskProcessor
 from src.processors.json_processor import JSONPreprocessor
+from config.settings import (
+    DEFAULT_EMBEDDING_MODEL, DEFAULT_BATCH_SIZE, OLLAMA_MODELS, 
+    LOG_LEVEL, LLM_CACHE_DIR
+)
 
 
 def setup_logging():
@@ -28,7 +32,7 @@ def setup_logging():
     os.makedirs("logs", exist_ok=True)
     
     logging.basicConfig(
-        level=logging.INFO,
+        level=getattr(logging, LOG_LEVEL),
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('logs/document_processing.log'),
@@ -70,8 +74,8 @@ def initialize_models(logger, pipeline_start_time):
     logger.info("🧠 Initializing multilingual embedder model...")
     with tqdm(total=1, desc="⚡ Loading embedder", unit="model") as pbar:
         multilingual_embedder = MultilingualEmbedder(
-            model_name="sentence-transformers/all-MiniLM-L6-v2", 
-            batch_size=32
+            model_name=DEFAULT_EMBEDDING_MODEL, 
+            batch_size=DEFAULT_BATCH_SIZE
         )
         pbar.update(1)
 
@@ -81,7 +85,7 @@ def initialize_models(logger, pipeline_start_time):
 
     logger.info("🤖 Loading OLLAMA LLM model...")
     with tqdm(total=1, desc="🔥 Loading LLM", unit="model") as pbar:
-        llm = OLLAMA_LLM('llama3:8b', './cache/llm_cache').load_model()
+        llm = OLLAMA_LLM(OLLAMA_MODELS['default'], str(LLM_CACHE_DIR)).load_model()
         pbar.update(1)
 
     current_elapsed = time.time() - pipeline_start_time
