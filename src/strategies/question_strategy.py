@@ -19,12 +19,10 @@ class QuestionStrategy(TaskStrategy):
         self.llm = llm
         self.complexity = complexity
         
-        logger.info("🔧 Setting up prompt template...")
-        self._set_prompt()
         
         logger.info("✅ QuestionStrategy initialized successfully")
         
-    def _set_prompt(self, detected_lang="English"):
+    def _set_prompt(self, detected_lang):
         """Set up the prompt template based on complexity level and language."""
         logger.debug(f"📋 Setting prompt for complexity: {self.complexity}, language: {detected_lang}")
         
@@ -65,7 +63,7 @@ class QuestionStrategy(TaskStrategy):
             logger.error(f"❌ Error setting up prompt: {str(e)}")
             raise
 
-    def set_complexity(self, complexity):
+    def set_complexity(self, complexity, doc=None):
         """Change complexity level with synonym mapping and fuzzy matching."""
         import difflib
         
@@ -86,7 +84,9 @@ class QuestionStrategy(TaskStrategy):
             mapped_complexity = synonyms[complexity]
             logger.info(f"✅ Synonym '{complexity}' mapped to '{mapped_complexity}'")
             self.complexity = mapped_complexity
-            self._set_prompt()
+            if doc:
+                detected_lang = returnlang(doc.page_content)
+                self._set_prompt(detected_lang)
             return
         
         # Check exact match
@@ -95,7 +95,9 @@ class QuestionStrategy(TaskStrategy):
         if complexity in valid_options:
             logger.info(f"✅ Exact match found: '{complexity}'")
             self.complexity = complexity
-            self._set_prompt()
+            if doc:
+                detected_lang = returnlang(doc.page_content)
+                self._set_prompt(detected_lang)
             return
         
         # Fuzzy matching against synonyms first
@@ -113,7 +115,9 @@ class QuestionStrategy(TaskStrategy):
             final_complexity = synonyms.get(best_match, best_match)
             self.complexity = final_complexity
             logger.info(f"✅ Final complexity set to: '{final_complexity}'")
-            self._set_prompt()
+            if doc:
+                detected_lang = returnlang(doc.page_content)
+                self._set_prompt(detected_lang)
         else:
             logger.error(f"❌ No valid complexity match found for: '{original_complexity}'")
             raise ValueError("Please use: 'easy', 'medium', 'hard', or synonyms like 'challenging', 'simple'")
@@ -202,7 +206,7 @@ class QuestionStrategy(TaskStrategy):
             # Update complexity if provided
             if complexity is not None and complexity != self.complexity:
                 logger.info(f"🔄 Updating complexity to: {complexity}")
-                self.set_complexity(complexity)
+                self.set_complexity(complexity, doc)
             
             # Update prompt with detected language
             self._set_prompt(detected_lang)
