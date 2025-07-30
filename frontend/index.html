@@ -69,6 +69,16 @@
             transform: translateY(-1px);
         }
         
+        .user-info {
+            font-size: 10px;
+            color: #6c757d;
+            padding: 8px 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
         .conversation-info {
             font-size: 11px;
             color: #6c757d;
@@ -409,6 +419,16 @@
             margin: 10px 0;
         }
         
+        .initialization-status {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+        
         @media (max-width: 768px) {
             .chat-container {
                 flex-direction: column;
@@ -434,6 +454,11 @@
                 <button class="new-chat-btn" onclick="clearChat()">
                     ➕ New Chat
                 </button>
+                <div class="user-info" id="userInfo">
+                    <div>User ID:</div>
+                    <div id="currentUserId">Generating...</div>
+                    <div>Tab Session: Active</div>
+                </div>
                 <div class="conversation-info" id="conversationInfo">
                     <div>Current Conversation:</div>
                     <div id="currentConversationId">Loading...</div>
@@ -460,6 +485,9 @@
                         📁 Upload JSON File
                     </label>
                     <div id="fileName" style="margin-top: 5px; font-size: 11px; color: #6c757d;"></div>
+                    <div id="initializationStatus" class="initialization-status hidden">
+                        ⏳ System initializing... Please wait
+                    </div>
                     <button onclick="checkStatus()" style="margin-top: 5px; padding: 5px 10px; font-size: 11px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer;">
                         📊 Check Status
                     </button>
@@ -571,12 +599,23 @@
     </div>
 
     <script>
-        // Global variables
+        // Global variables with UUID support
         let currentStrategy = 'chatting_strategy';
         let currentConversationId = generateConversationId();
+        let currentUserId = null;
         let uploadedDocument = null;
         let isProcessing = false;
         let isSystemInitialized = false;
+        let initializationInProgress = false;
+
+        // Generate unique user ID using UUID v4 algorithm
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
 
         // Generate unique conversation ID
         function generateConversationId() {
@@ -585,17 +624,74 @@
             return `conv_${timestamp}_${random}`;
         }
 
-        // Update conversation display
-        function updateConversationDisplay() {
-            const shortId = currentConversationId.substr(5, 12) + '...';
-            document.getElementById('currentConversationId').textContent = shortId;
-            document.title = `Chat - ${shortId}`;
+        // Initialize user session
+        async function initializeUserSession() {
+            try {
+                // Generate UUID for this tab/user
+                currentUserId = generateUUID();
+                console.log(`🆔 Generated user ID: ${currentUserId}`);
+                
+                // Update UI only if DOM elements are ready
+                if (document.getElementById('currentUserId')) {
+                    updateUserDisplay();
+                }
+                if (document.getElementById('currentConversationId')) {
+                    updateConversationDisplay();
+                }
+                
+                // Optional: Register with server (can be used for session management)
+                try {
+                    await fetch('/api/generate-user-id', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ client_generated_id: currentUserId })
+                    });
+                } catch (serverError) {
+                    console.warn('Server registration failed, continuing with client-generated ID:', serverError.message);
+                }
+                
+                console.log(`✅ User session initialized for: ${currentUserId}`);
+                
+            } catch (error) {
+                console.error('Error initializing user session:', error);
+                // Fallback to generated UUID even if there are errors
+                if (!currentUserId) {
+                    currentUserId = generateUUID();
+                }
+                // Try updating UI again
+                if (document.getElementById('currentUserId')) {
+                    updateUserDisplay();
+                }
+            }
         }
 
-        // Check system status
+        // Update user display
+        function updateUserDisplay() {
+            const userIdElement = document.getElementById('currentUserId');
+            if (userIdElement) {
+                const shortUserId = currentUserId ? currentUserId.substr(0, 8) + '...' : 'Unknown';
+                userIdElement.textContent = shortUserId;
+            }
+        }
+
+        // Update conversation display
+        function updateConversationDisplay() {
+            const conversationIdElement = document.getElementById('currentConversationId');
+            if (conversationIdElement) {
+                const shortId = currentConversationId.substr(5, 12) + '...';
+                conversationIdElement.textContent = shortId;
+                document.title = `Chat - User: ${currentUserId?.substr(0, 8)} - Conv: ${shortId}`;
+            }
+        }
+
+        // Check system status with user ID
         async function checkSystemStatus() {
+            if (!currentUserId) return null;
+            
             try {
-                const response = await fetch('/api/status');
+                const response = await fetch(`/api/status/${currentUserId}`);
                 const data = await response.json();
                 isSystemInitialized = data.initialized;
                 return data;
@@ -607,20 +703,22 @@
         }
 
         // Strategy button handling
-        document.querySelectorAll('.strategy-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                // Remove active class from all buttons
-                document.querySelectorAll('.strategy-btn').forEach(b => b.classList.remove('active'));
-                
-                // Add active class to clicked button
-                e.target.classList.add('active');
-                
-                // Update current strategy
-                currentStrategy = e.target.dataset.strategy;
-                
-                // Update UI
-                updateStrategyUI();
-                updateStatus();
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.strategy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.strategy-btn').forEach(b => b.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    e.target.classList.add('active');
+                    
+                    // Update current strategy
+                    currentStrategy = e.target.dataset.strategy;
+                    
+                    // Update UI
+                    updateStrategyUI();
+                    updateStatus();
+                });
             });
         });
 
@@ -662,8 +760,8 @@
             const oldConversationId = currentConversationId;
             currentConversationId = generateConversationId();
             
-            console.log(`🆕 Starting new conversation: ${currentConversationId}`);
-            console.log(`📝 Previous conversation: ${oldConversationId}`);
+            console.log(`🆕 User ${currentUserId}: Starting new conversation: ${currentConversationId}`);
+            console.log(`📝 User ${currentUserId}: Previous conversation: ${oldConversationId}`);
             
             // Update display
             updateConversationDisplay();
@@ -674,7 +772,8 @@
                     <div class="avatar bot">🤖</div>
                     <div class="message-content">
                         🆕 New conversation started!<br>
-                        <small>Conversation ID: ${currentConversationId.substr(5, 12)}...</small><br>
+                        <small>User: ${currentUserId.substr(0, 8)}...</small><br>
+                        <small>Conversation: ${currentConversationId.substr(5, 12)}...</small><br>
                         Ready for your questions!
                     </div>
                 </div>
@@ -697,21 +796,11 @@
             `;
             
             try {
-                // Clear the current conversation on the server
-                if (currentConversationId !== 'default') {
-                    await fetch(`/api/conversations/${currentConversationId}/clear`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
-                }
-                
                 // Generate new conversation ID
                 const oldConversationId = currentConversationId;
                 currentConversationId = generateConversationId();
                 
-                console.log(`🔄 New conversation started: ${currentConversationId}`);
+                console.log(`🔄 User ${currentUserId}: New conversation started: ${currentConversationId}`);
                 
                 // Check system status
                 const systemStatus = await checkSystemStatus();
@@ -731,7 +820,8 @@
                         <div class="avatar bot">🤖</div>
                         <div class="message-content">
                             🆕 New conversation started!<br>
-                            <small>Conversation ID: ${currentConversationId.substr(5, 12)}...</small><br>
+                            <small>User: ${currentUserId.substr(0, 8)}...</small><br>
+                            <small>Conversation: ${currentConversationId.substr(5, 12)}...</small><br>
                             ${statusMessage}
                         </div>
                     </div>
@@ -755,24 +845,20 @@
 
         async function clearCurrentConversation() {
             try {
-                await fetch(`/api/conversations/${currentConversationId}/clear`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
+                // For this implementation, we'll just clear the UI since conversation history
+                // is managed per user session
                 const messagesContainer = document.getElementById('messages');
                 messagesContainer.innerHTML = `
                     <div class="message">
                         <div class="avatar bot">🤖</div>
                         <div class="message-content">
-                            🧹 Conversation history cleared! Current conversation continues with fresh context.
+                            🧹 Conversation history cleared! Current conversation continues with fresh context.<br>
+                            <small>User: ${currentUserId.substr(0, 8)}...</small>
                         </div>
                     </div>
                 `;
                 
-                console.log(`🧹 Cleared conversation: ${currentConversationId}`);
+                console.log(`🧹 User ${currentUserId}: Cleared conversation: ${currentConversationId}`);
             } catch (error) {
                 console.error('Error clearing conversation:', error);
                 addMessage('bot', '❌ Error clearing conversation history. Please try again.');
@@ -780,49 +866,39 @@
         }
 
         async function viewConversationHistory() {
-            try {
-                const response = await fetch(`/api/conversations/${currentConversationId}/history`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    addMessage('bot', `Error loading history: ${data.error}`);
-                    return;
-                }
-                
-                let historyText = `📜 Conversation History (${data.total_messages} messages):\n\n`;
-                
-                if (data.messages.length === 0) {
-                    historyText += 'No messages in this conversation yet.';
-                } else {
-                    data.messages.forEach((msg, index) => {
-                        const sender = msg.type === 'human' ? '👤 You' : '🤖 Bot';
-                        const content = msg.content.length > 100 ? 
-                            msg.content.substring(0, 100) + '...' : 
-                            msg.content;
-                        historyText += `${sender}: ${content}\n\n`;
-                    });
-                }
-                
-                addMessage('bot', historyText);
-            } catch (error) {
-                console.error('Error viewing history:', error);
-                addMessage('bot', '❌ Error loading conversation history. Please try again.');
+            // For this implementation, show local session info
+            let historyText = `📜 Session Information:\n\n`;
+            historyText += `👤 User ID: ${currentUserId}\n`;
+            historyText += `💬 Current Conversation: ${currentConversationId}\n`;
+            historyText += `📄 Document Status: ${isSystemInitialized ? 'Loaded' : 'Not loaded'}\n`;
+            historyText += `🔧 Current Strategy: ${currentStrategy}\n`;
+            
+            if (uploadedDocument) {
+                historyText += `📁 Document: ${uploadedDocument.name}\n`;
+                historyText += `📊 Documents: ${uploadedDocument.total_documents || 0}\n`;
+                historyText += `🧩 Chunks: ${uploadedDocument.total_chunks || 0}\n`;
             }
+            
+            historyText += `\nThis is a parallel session - each tab runs independently.`;
+            
+            addMessage('bot', historyText);
         }
 
         async function handleFileUpload(event) {
             const file = event.target.files[0];
-            if (file) {
+            if (file && currentUserId) {
                 try {
                     // Show upload progress
                     document.getElementById('fileName').innerHTML = '<div class="loading"></div> Uploading...';
+                    document.getElementById('initializationStatus').classList.remove('hidden');
+                    initializationInProgress = true;
                     
                     // Create form data for file upload
                     const formData = new FormData();
                     formData.append('file', file);
                     
-                    // Upload to backend
-                    const response = await fetch('/api/upload', {
+                    // Upload to backend with user ID
+                    const response = await fetch(`/api/upload/${currentUserId}`, {
                         method: 'POST',
                         body: formData
                     });
@@ -831,40 +907,96 @@
                     
                     if (data.error) {
                         document.getElementById('fileName').textContent = `❌ ${data.error}`;
+                        document.getElementById('initializationStatus').classList.add('hidden');
                         uploadedDocument = null;
                         isSystemInitialized = false;
+                        initializationInProgress = false;
                     } else {
-                        uploadedDocument = {
-                            name: file.name,
-                            filepath: data.filepath,
-                            total_documents: data.total_documents,
-                            total_chunks: data.total_chunks
-                        };
                         document.getElementById('fileName').innerHTML = 
-                            `✅ ${file.name}<br><small>${data.total_documents} docs, ${data.total_chunks} chunks</small>`;
+                            `✅ ${file.name}<br><small>Upload complete - initializing system...</small>`;
                         
-                        isSystemInitialized = true;
+                        // Start polling for initialization status
+                        pollInitializationStatus(file.name);
                         
-                        // Add success message to chat
-                        addMessage('bot', `Document "${file.name}" uploaded and processed successfully! Loaded ${data.total_documents} documents with ${data.total_chunks} chunks. System initialized and ready for all strategies.`);
+                        // Add upload success message to chat
+                        addMessage('bot', `Document "${file.name}" uploaded successfully for user ${currentUserId.substr(0, 8)}... System initialization started in background.`);
                     }
                     
                 } catch (error) {
                     document.getElementById('fileName').textContent = `❌ Upload failed: ${error.message}`;
+                    document.getElementById('initializationStatus').classList.add('hidden');
                     uploadedDocument = null;
                     isSystemInitialized = false;
+                    initializationInProgress = false;
                 }
                 
                 updateStatus();
+            } else if (!currentUserId) {
+                addMessage('bot', '❌ User session not initialized. Please refresh the page.');
             }
         }
 
+        async function pollInitializationStatus(fileName) {
+            const maxPolls = 60; // Poll for up to 1 minute
+            let pollCount = 0;
+            
+            const poll = async () => {
+                try {
+                    const status = await checkSystemStatus();
+                    
+                    if (status && status.initialized) {
+                        // Initialization complete
+                        uploadedDocument = {
+                            name: fileName,
+                            filepath: status.current_document,
+                            total_documents: status.total_documents,
+                            total_chunks: status.total_chunks
+                        };
+                        
+                        document.getElementById('fileName').innerHTML = 
+                            `✅ ${fileName}<br><small>${status.total_documents} docs, ${status.total_chunks} chunks</small>`;
+                        document.getElementById('initializationStatus').classList.add('hidden');
+                        
+                        isSystemInitialized = true;
+                        initializationInProgress = false;
+                        
+                        addMessage('bot', `🎉 System initialization complete! Loaded ${status.total_documents} documents with ${status.total_chunks} chunks. All strategies are now available.`);
+                        updateStatus();
+                        return;
+                    }
+                    
+                    pollCount++;
+                    if (pollCount < maxPolls) {
+                        setTimeout(poll, 1000); // Poll every second
+                    } else {
+                        // Timeout
+                        document.getElementById('initializationStatus').innerHTML = 
+                            `⚠️ Initialization taking longer than expected. Check status manually.`;
+                        initializationInProgress = false;
+                    }
+                } catch (error) {
+                    console.error('Error polling initialization status:', error);
+                    pollCount++;
+                    if (pollCount < maxPolls) {
+                        setTimeout(poll, 2000); // Poll less frequently on error
+                    }
+                }
+            };
+            
+            poll();
+        }
+
         async function checkStatus() {
+            if (!currentUserId) {
+                addMessage('bot', '❌ User session not initialized. Please refresh the page.');
+                return;
+            }
+            
             try {
-                const response = await fetch('/api/status');
+                const response = await fetch(`/api/status/${currentUserId}`);
                 const status = await response.json();
                 
-                let statusMsg = `System Status:\n`;
+                let statusMsg = `System Status for User ${currentUserId.substr(0, 8)}...:\n`;
                 statusMsg += `• Initialized: ${status.initialized ? 'Yes' : 'No'}\n`;
                 statusMsg += `• Document loaded: ${status.document_loaded ? 'Yes' : 'No'}\n`;
                 if (status.current_document) {
@@ -873,7 +1005,8 @@
                 }
                 statusMsg += `• Documents: ${status.total_documents || 0}\n`;
                 statusMsg += `• Chunks: ${status.total_chunks || 0}\n`;
-                statusMsg += `• Current Conversation: ${currentConversationId.substr(5, 12)}...`;
+                statusMsg += `• Current Conversation: ${currentConversationId.substr(5, 12)}...\n`;
+                statusMsg += `• Full User ID: ${currentUserId}`;
                 
                 addMessage('bot', statusMsg);
                 
@@ -886,12 +1019,16 @@
         }
 
         function updateStatus() {
-            const hasDoc = uploadedDocument ? 
-                `📄 ${uploadedDocument.name} (${uploadedDocument.total_documents || 0} docs)` : 
-                '📄 No document';
-            const strategy = currentStrategy.replace('_', ' ').toUpperCase();
-            const initStatus = isSystemInitialized ? 'Ready' : 'Need Upload';
-            document.getElementById('status').textContent = `${strategy} • ${hasDoc} • ${initStatus}`;
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+                const hasDoc = uploadedDocument ? 
+                    `📄 ${uploadedDocument.name} (${uploadedDocument.total_documents || 0} docs)` : 
+                    '📄 No document';
+                const strategy = currentStrategy.replace('_', ' ').toUpperCase();
+                const initStatus = isSystemInitialized ? 'Ready' : (initializationInProgress ? 'Initializing' : 'Need Upload');
+                const userStatus = `User: ${currentUserId ? currentUserId.substr(0, 8) + '...' : 'Unknown'}`;
+                statusElement.textContent = `${userStatus} • ${strategy} • ${hasDoc} • ${initStatus}`;
+            }
         }
 
         function handleKeyPress(event) {
@@ -902,7 +1039,7 @@
         }
 
         async function sendMessage() {
-            if (isProcessing) return;
+            if (isProcessing || !currentUserId) return;
             
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
@@ -955,6 +1092,11 @@
         }
 
         async function executeStrategy() {
+            if (!currentUserId) {
+                addMessage('bot', '❌ User session not initialized. Please refresh the page.');
+                return;
+            }
+            
             if (!uploadedDocument || !uploadedDocument.name) {
                 addMessage('bot', 'Please upload a document first before using this strategy.');
                 return;
@@ -991,9 +1133,9 @@
                     };
                 }
                 
-                console.log(`📤 Executing ${currentStrategy} in conversation: ${currentConversationId}`);
+                console.log(`📤 User ${currentUserId}: Executing ${currentStrategy} in conversation: ${currentConversationId}`);
                 
-                const response = await fetch('/api/process', {
+                const response = await fetch(`/api/process/${currentUserId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1023,6 +1165,7 @@
                         if (data.source_docs_count) {
                             additionalInfo += `📚 Sources: ${data.source_docs_count}`;
                         }
+                        additionalInfo += `<br>👤 User: ${currentUserId.substr(0, 8)}...`;
                         additionalInfo += '</small>';
                         loadingContent.innerHTML += additionalInfo;
                     }
@@ -1063,6 +1206,11 @@
         }
 
         async function processMessage(message) {
+            if (!currentUserId) {
+                addMessage('bot', '❌ User session not initialized. Please refresh the page.');
+                return;
+            }
+            
             // Only allow chat strategy to use the message input
             if (currentStrategy !== 'chatting_strategy') {
                 addMessage('bot', 'This strategy uses the button in the sidebar. Please click the execute button to run this strategy.');
@@ -1084,9 +1232,9 @@
                     options: params
                 };
                 
-                console.log(`📤 Sending message in conversation: ${currentConversationId}`);
+                console.log(`📤 User ${currentUserId}: Sending message in conversation: ${currentConversationId}`);
                 
-                const response = await fetch('/api/process', {
+                const response = await fetch(`/api/process/${currentUserId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1114,6 +1262,7 @@
                     if (data.source_docs_count) {
                         additionalInfo += `<br><small>📚 Sources used: ${data.source_docs_count}</small>`;
                     }
+                    additionalInfo += `<br><small>👤 User: ${currentUserId.substr(0, 8)}...</small>`;
                     if (additionalInfo) {
                         loadingContent.innerHTML += additionalInfo;
                     }
@@ -1158,39 +1307,85 @@
             }
         }
 
+        // Cleanup function for when tab is closed
+        window.addEventListener('beforeunload', function() {
+            if (currentUserId) {
+                // Send cleanup request (may not complete due to page unload)
+                navigator.sendBeacon(`/api/cleanup/${currentUserId}`, '');
+                console.log(`🗑️ Cleanup beacon sent for user: ${currentUserId}`);
+            }
+        });
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log(`🚀 Page loaded with conversation: ${currentConversationId}`);
+            console.log('🚀 Page loaded - initializing user session...');
+            
+            // Wait a bit for DOM to be fully ready
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Initialize user session first
+            await initializeUserSession();
             
             // Check initial system status
             await checkSystemStatus();
             
-            // Update conversation display
+            // Update displays (with null checks)
             updateConversationDisplay();
-            
-            // Update initial status
             updateStrategyUI();
             updateStatus();
             
-            // Add initial welcome message with conversation info
+            // Add initial welcome message with user and conversation info
             const messagesContainer = document.getElementById('messages');
-            if (messagesContainer && messagesContainer.children.length <= 1) {
+            if (messagesContainer) {
+                // Clear any existing content first
+                messagesContainer.innerHTML = '';
+                
                 const statusMessage = isSystemInitialized ? 
                     'System ready! You can start chatting.' : 
                     'Please upload a document to initialize the system.';
                     
-                const welcomeMessage = `Welcome! ${statusMessage}\n\nConversation ID: ${currentConversationId.substr(5, 12)}...\n\nSelect a strategy from the sidebar and start chatting!`;
+                const welcomeMessage = `Welcome to your parallel session!\n\n👤 User ID: ${currentUserId.substr(0, 8)}...\n💬 Conversation: ${currentConversationId.substr(5, 12)}...\n\n${statusMessage}\n\nEach browser tab runs independently with its own user session. Select a strategy from the sidebar and start chatting!`;
                 
-                // Update the existing welcome message
-                const existingMessage = messagesContainer.querySelector('.message-content');
-                if (existingMessage) {
-                    existingMessage.innerHTML = formatLLMOutput(welcomeMessage);
-                }
+                // Create welcome message
+                addMessage('bot', welcomeMessage);
             }
+            
+            console.log(`✅ User ${currentUserId}: Page initialization complete`);
         });
 
+        // Auto-save user session to localStorage for recovery
+        function saveSessionToStorage() {
+            if (currentUserId && currentConversationId) {
+                const sessionData = {
+                    userId: currentUserId,
+                    conversationId: currentConversationId,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('chatbot_session', JSON.stringify(sessionData));
+            }
+        }
+
+        function loadSessionFromStorage() {
+            try {
+                const saved = localStorage.getItem('chatbot_session');
+                if (saved) {
+                    const sessionData = JSON.parse(saved);
+                    // Only restore if session is less than 1 hour old
+                    if (Date.now() - sessionData.timestamp < 3600000) {
+                        return sessionData;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading session from storage:', error);
+            }
+            return null;
+        }
+
+        // Save session periodically
+        setInterval(saveSessionToStorage, 30000); // Save every 30 seconds
+
         // Initialize
-        console.log(`🆕 Initial conversation: ${currentConversationId}`);
+        console.log(`🆕 Initial setup starting...`);
     </script>
 </body>
 </html>
